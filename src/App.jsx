@@ -1,0 +1,18 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+import SessionPage from './pages/SessionPage';
+import './assets/css/cusstom.css';
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/session" element={<SessionPage />} />
+        <Route path="/session/:sessionId" element={<SessionPage />} />
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;

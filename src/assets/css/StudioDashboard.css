@@ -1,0 +1,225 @@
+.studio-container {
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    padding: 16px;
+    font-family: "Inter", sans-serif;
+    position: relative;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+}
+
+/* Header */
+.studio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+    padding: 5px 0;
+}
+
+.studio-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.collapse-btn {
+    border: none;
+    background: none;
+    font-size: 18px;
+    cursor: pointer;
+    transition: transform 0.2s;
+    padding: 5px 10px;
+}
+
+.collapse-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Banner */
+.studio-banner {
+    background: #f4ebff;
+    border: 1px solid #e2d4ff;
+    color: #663399;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 14px;
+}
+
+.studio-banner a {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+/* Grid cards */
+.studio-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.studio-card {
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #e5e7eb;
+    transition: 0.2s;
+}
+
+.studio-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.audio {
+    background-color: #eef2ff;
+}
+
+.video {
+    background-color: #ecfdf5;
+}
+
+.mindmap {
+    background-color: #fdf2f8;
+}
+
+.report {
+    background-color: #fffbeb;
+}
+
+.flashcard {
+    background-color: #fef2f2;
+}
+
+.quiz {
+    background-color: #eff6ff;
+}
+
+.edit-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Notes */
+.studio-list {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 10px;
+    margin-top: 8px;
+}
+
+.note-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.note-item:hover {
+    background: #f9fafb;
+}
+
+.note-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.note-icon {
+    font-size: 18px;
+}
+
+.note-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.note-title {
+    font-weight: 500;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 190px;
+}
+
+.note-info {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.icon-btn {
+    border: none;
+    background: none;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 4px;
+}
+
+/* Add button */
+.add-btn {
+    margin-top: 14px;
+    width: 100%;
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 10px 0;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+}
+
+.add-btn:hover {
+    background: #222;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .studio-container {
+        padding: 12px;
+    }
+
+    .studio-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .note-title {
+        max-width: 160px;
+    }
+}
+
+/* Horizontal collapse */
+.studio-container.collapsed {
+    width: auto;
+    padding: 16px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.studio-container.collapsed .studio-header h3 {
+    display: none;
+}
+
+.studio-container.collapsed .studio-banner,
+.studio-container.collapsed .studio-grid,
+.studio-container.collapsed .studio-list,
+.studio-container.collapsed .add-btn {
+    display: none;
+}

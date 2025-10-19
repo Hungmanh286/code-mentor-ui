@@ -1,0 +1,16 @@
+services:
+  chatbot-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chatbot-frontend
+    container_name: chatbot-frontend
+    restart: unless-stopped
+    ports:
+      - "{{ UI_PORT }}:80"
+    networks:
+      - chatbot-ui-net
+
+networks:
+  chatbot-ui-net:
+    driver: bridge

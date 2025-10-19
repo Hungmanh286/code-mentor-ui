@@ -1,0 +1,3 @@
+[node-server]
+app                     ansible_host=stockai-app2 ansible_user=vega
+devapp                  ansible_host=stockai-ml2 ansible_user=vega
