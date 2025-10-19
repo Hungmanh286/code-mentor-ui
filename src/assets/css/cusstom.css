@@ -1,0 +1,53 @@
+#topi-title {
+    padding-top: 1.2rem;
+}
+
+#topi-chat-input {
+    padding-bottom: 3rem;
+}
+
+.next-question-header {
+    margin-bottom: 1rem;
+}
+
+.question-link {
+    display: block;
+    padding: 5px;
+    text-decoration: none;
+    color: #007bff;
+}
+
+.question-link:hover {
+    text-decoration: underline;
+}
+
+.katex-display>.katex {
+    display: block;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.katex {
+    font-size: 1.2rem;
+    line-height: 1.2;
+    text-indent: 0;
+    text-rendering: auto;
+}
+
+.markdown-container {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    white-space: normal;
+}
+
+.flex>div:nth-child(1) {
+    max-width: 100%;
+    overflow: hidden;
+    word-wrap: break-word;
+    white-space: normal;
+}

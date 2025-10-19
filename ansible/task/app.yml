@@ -1,0 +1,86 @@
+- hosts: app
+  name: Deploy topibot ui via docker
+
+  vars_files:
+    - ../vault/secrets.yml
+
+  vars:
+    USER: "{{ hostvars[inventory_hostname].ansible_user }}"
+    GROUP: "{{ hostvars[inventory_hostname].ansible_user }}"
+    WORKING_DIR: "/home/{{ USER }}/src/chatbot-ui"
+    REPO_URL: "https://{{ REPO.USER }}:{{ REPO.TOKEN }}@gitlab.ovp.vn/llm/topi-bot.git"
+    REPO_VER: langchain-ui
+    UI_PORT: 4000
+    CONTAINER: chatbot-frontend
+
+  become: true
+  become_user: "{{ USER }}"
+
+  tasks:
+    - name: Topibot | Install basic package
+      package:
+        name:
+          - git
+        state: present
+        use: auto
+      become: true
+      become_user: "root"
+
+    - name: Topibot | Pull deploy tags
+      tags: ["checkout-source"]
+      block:
+        - name: Ensure src directory
+          file:
+            path: "{{ WORKING_DIR }}"
+            state: directory
+            owner: "{{ USER }}"
+            group: "{{ GROUP }}"
+
+        - name: Get project source
+          git:
+            force: true
+            repo: "{{ REPO_URL }}"
+            dest: "{{ WORKING_DIR }}"
+            version: "{{ REPO_VER }}"
+
+    - name: Topibot | Upload config
+      tags: ["upload-env"]
+      block:
+        - name: Copy frontend enviroment
+          tags: ["frontend-env"]
+          template:
+            src: ../template/frontend.env.j2
+            dest: "{{ WORKING_DIR }}/.env"
+
+    - name: Topibot | Upload docker-compose file
+      tags: ["docker-compose"]
+      template:
+        src: ../template/docker-compose.yaml.j2
+        dest: "{{ WORKING_DIR }}/docker-compose.yaml"
+
+    - name: Topibot | Check container is exists
+      tags: ["checkout-container"]
+      block:
+        - name: Check docker ps
+          shell: |
+            docker ps -a --filter "name=^{{ CONTAINER }}$" --format "{% raw %}{{ .Names }}{% endraw %}"
+          register: container_check
+          changed_when: false
+
+        - name: Make checker variable
+          set_fact:
+            container_exists: "{{ container_check.stdout != '' }}"
+
+    - name: Topibot | Run app
+      tags: ["docker-run"]
+      shell:
+        cmd: docker compose up -d --build
+        chdir: "{{ WORKING_DIR }}"
+      when: not container_exists
+
+    - name: Topibot | Restart app
+      tags: ["docker-restart"]
+      shell:
+        cmd: docker compose restart
+        chdir: "{{ WORKING_DIR }}"
+      when: container_exists

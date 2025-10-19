@@ -1,0 +1,12 @@
+- hosts: node-server
+  name: Install docker & docker compose
+  vars:
+    - USER: "{{ hostvars[inventory_hostname].ansible_user }}"
+
+  roles:
+    - role: geerlingguy.docker
+      become: yes
+      become_user: root
+      vars:
+        docker_users:
+          - "{{ USER }}"
