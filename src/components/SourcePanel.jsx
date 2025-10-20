@@ -10,6 +10,8 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [fileContent, setFileContent] = useState('');
     const [loadingContent, setLoadingContent] = useState(false);
+    const [fileImages, setFileImages] = useState([]);
+    const [loadingFiles, setLoadingFiles] = useState(false);
 
     // Thông báo lên App khi trạng thái thu gọn thay đổi
     useEffect(() => {
@@ -18,15 +20,93 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         }
     }, [collapsed, onCollapsedChange]);
 
-    const toggleAll = (e) => {
-        const checked = e.target.checked;
-        setSources(sources.map((s) => ({ ...s, checked })));
+    // Fetch files when session UUID changes and set up polling
+    useEffect(() => {
+        if (sessionUUID) {
+            // Initial fetch
+            fetchSessionFiles();
+
+            // Set up polling to refresh files list periodically
+            const intervalId = setInterval(() => {
+                fetchSessionFiles();
+            }, 30000); // Poll every 30 seconds
+
+            // Clean up interval on component unmount or when session changes
+            return () => clearInterval(intervalId);
+        }
+    }, [sessionUUID]);
+
+    // Function to fetch files for the current session
+    const fetchSessionFiles = async () => {
+        if (!sessionUUID) return;
+
+        setLoadingFiles(true);
+        try {
+            console.log(`Fetching files for session: ${sessionUUID}`);
+            const response = await fetch(`http://0.0.0.0:8686/session-files/${sessionUUID}`);
+            console.log("Response status:", response.status);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log("Session files response data:", data);
+
+                // Handle array of strings format [file_id1, file_id2, ...]
+                if (Array.isArray(data)) {
+                    console.log("Response is an array of file IDs");
+                    const filesData = data.map(fileId => ({
+                        name: `File ${fileId.substring(0, 8)}...`,
+                        id: fileId,
+                        checked: false
+                    }));
+                    setSources(filesData);
+                }
+                // Handle object with files array format {files: [{file_id, filename, active}, ...]}
+                else if (data.files && Array.isArray(data.files)) {
+                    console.log("Response contains files array");
+                    const filesData = data.files.map(file => ({
+                        name: file.filename || `File ${file.file_id.substring(0, 8)}`,
+                        id: file.file_id,
+                        checked: file.active || false
+                    }));
+                    setSources(filesData);
+                }
+                // Handle empty or unexpected response
+                else {
+                    console.log("Unexpected response format:", data);
+                    setSources([]);
+                }
+            } else {
+                console.error("Failed to fetch files:", response.statusText);
+            }
+        } catch (err) {
+            console.error("Error fetching session files:", err);
+        } finally {
+            setLoadingFiles(false);
+        }
     };
 
-    const toggleItem = (index) => {
-        setSources(
-            sources.map((s, i) => (i === index ? { ...s, checked: !s.checked } : s))
-        );
+    // Refresh files list
+    const handleRefresh = () => {
+        fetchSessionFiles();
+    };
+
+    const toggleAll = async (e) => {
+        const checked = e.target.checked;
+        setSources(sources.map((s) => ({ ...s, checked })));
+
+        // Update active status for all files
+        for (const source of sources) {
+            await updateFileActiveStatus(source.id, checked);
+        }
+    };
+
+    const toggleItem = async (index) => {
+        const newSources = sources.map((s, i) => (i === index ? { ...s, checked: !s.checked } : s));
+        setSources(newSources);
+
+        // Update active status for this specific file
+        const source = sources[index];
+        await updateFileActiveStatus(source.id, !source.checked);
     };
 
     const handleFileChange = (e) => {
@@ -38,12 +118,17 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         if (!file || !sessionUUID) return;
         setUploading(true);
         setUploadResult('');
+
+        // Tạo file_id ngẫu nhiên
+        const fileId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
         const formData = new FormData();
         formData.append('file', file);
         formData.append('session_id', sessionUUID);
+        formData.append('file_id', fileId);
 
         try {
-            console.log("Uploading file with session:", sessionUUID);
+            console.log("Uploading file with session:", sessionUUID, "file_id:", fileId);
             const res = await fetch('http://0.0.0.0:8686/upload', {
                 method: 'POST',
                 body: formData,
@@ -52,8 +137,9 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
             const data = await res.json();
             console.log("Upload response:", data);
             if (data.file_path) {
-                setSources([...sources, { name: file.name, checked: true }]);
                 setUploadResult('Tải lên thành công!');
+                // Fetch all files from the session instead of manually adding just this one
+                fetchSessionFiles();
             } else {
                 setUploadResult('Lỗi: ' + (data.error || 'Không xác định'));
             }
@@ -66,14 +152,14 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         }
     };
 
-    const [fileImages, setFileImages] = useState([]);
-
-    const handleViewFile = async (filename) => {
+    const handleViewFile = async (filename, fileId) => {
         if (selectedFile === filename) {
             // Toggle off if clicking the same file again
             setSelectedFile(null);
             setFileContent('');
             setFileImages([]);
+            // Update file active status to false when deselecting
+            await updateFileActiveStatus(fileId, false);
             return;
         }
 
@@ -83,8 +169,11 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         setFileContent('');
 
         try {
-            console.log(`Fetching content for file: ${filename}, session: ${sessionUUID}`);
-            const res = await fetch(`http://0.0.0.0:8686/view-file?session_id=${sessionUUID}`);
+            // Update file active status to true when selecting
+            await updateFileActiveStatus(fileId, true);
+
+            console.log(`Fetching content for file: ${filename}, session: ${sessionUUID}, fileId: ${fileId}`);
+            const res = await fetch(`http://0.0.0.0:8686/view-file?session_id=${sessionUUID}&file_id=${fileId}`);
             console.log("Response status:", res.status);
             console.log("Content type:", res.headers.get('content-type'));
 
@@ -123,6 +212,30 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
             setFileContent('Lỗi kết nối: Không thể tải nội dung file');
         } finally {
             setLoadingContent(false);
+        }
+    };
+
+    // Function to update file active status
+    const updateFileActiveStatus = async (fileId, active) => {
+        if (!fileId || !sessionUUID) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('file_id', fileId);
+            formData.append('active', active);
+
+            console.log(`Updating file active status: fileId=${fileId}, active=${active}`);
+            const response = await fetch('http://0.0.0.0:8686/update-file-active', {
+                method: 'PUT',
+                body: formData,
+            });
+
+            const result = await response.json();
+            console.log("Update file active status response:", result);
+            return result;
+        } catch (error) {
+            console.error("Error updating file active status:", error);
+            return { success: false, error: error.message };
         }
     };
 
@@ -170,7 +283,13 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                 </div>
                             )}
                         </div>
-                        <button className="btn text-xs px-1" style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}>🔄</button>
+                        <button
+                            onClick={handleRefresh}
+                            className="btn text-xs px-1"
+                            style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
+                        >
+                            🔄
+                        </button>
                     </div>
 
                     <div className="source-list">
@@ -188,7 +307,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                 <label key={i} className="source-item">
                                     <div
                                         className="source-info"
-                                        onClick={() => handleViewFile(s.name)}
+                                        onClick={() => handleViewFile(s.name, s.id)}
                                         style={{ cursor: 'pointer' }}
                                     >
                                         <span className="file-icon">📄</span>

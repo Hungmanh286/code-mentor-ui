@@ -23,20 +23,40 @@ function HomePage() {
             const data = await response.json();
             setSessions(data.sessions || []);
         } catch (err) {
-            console.error("Failed to fetch sessions:", err);
-            setError("Failed to load sessions. Please try again later.");
+
         } finally {
             setIsLoading(false);
         }
     };
 
-    const createNewSession = () => {
-        // Generate a random UUID for the new session
-        const randomSessionId = Math.random().toString(36).substring(2, 15) +
-            Math.random().toString(36).substring(2, 15);
+    const createNewSession = async () => {
+        try {
+            setIsLoading(true);
+            // Generate a random UUID for the new session
+            const randomSessionId = Math.random().toString(36).substring(2, 15) +
+                Math.random().toString(36).substring(2, 15);
 
-        // Navigate to the new session page with the generated ID
-        navigate(`/session/${randomSessionId}`);
+            // Create FormData for the request
+            const formData = new FormData();
+            formData.append('session_id', randomSessionId);
+
+            // Call the create-session endpoint
+            const response = await fetch('http://0.0.0.0:8686/create-session', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            console.log("Session created:", data);
+
+            // Navigate to the new session page with the generated ID
+            navigate(`/session/${randomSessionId}`);
+        } catch (err) {
+            console.error("Failed to create session:", err);
+            setError("Failed to create new session. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
