@@ -4,7 +4,7 @@ import { useImmer } from 'use-immer';
 const BASE_URL = import.meta.env.VITE_CHAT_URL;
 const SAMPLE_TOKEN = import.meta.env.VITE_CHAT_TOKEN;
 
-export const useWebSocket = () => {
+export const useWebSocket = (sessionId = null) => {
     const [response, setResponse] = useState('');
     const [error, setError] = useState('');
     const [errorCode, setErrorCode] = useState(0);
@@ -12,8 +12,8 @@ export const useWebSocket = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [nextQuestions, setNextQuestions] = useImmer([]);
     const [userInfo, setUserInfo] = useImmer({});
-    const [sessionUUID, setSessionUUID] = useState('');
-    const sessionUUIDRef = useRef('');
+    const [sessionUUID, setSessionUUID] = useState(sessionId || '');
+    const sessionUUIDRef = useRef(sessionId || '');
 
     const socketRef = useRef(null);
     const messageQueueRef = useRef('');
@@ -31,7 +31,12 @@ export const useWebSocket = () => {
     };
 
     const connectSocket = useCallback(() => {
-        const socket = new WebSocket(`${BASE_URL}/chat/pedagogical?token=${SAMPLE_TOKEN}`);
+        // Include session_uuid parameter in the URL if available
+        let wsURL = `${BASE_URL}/chat/pedagogical?token=${SAMPLE_TOKEN}`;
+        if (sessionUUIDRef.current) {
+            wsURL += `&session_uuid=${sessionUUIDRef.current}`;
+        }
+        const socket = new WebSocket(wsURL);
         socketRef.current = socket;
 
         socket.onopen = () => {

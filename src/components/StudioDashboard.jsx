@@ -46,7 +46,6 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                 body: (() => {
                     const form = new FormData();
                     form.append('session_id', sessionUUID);
-                    form.append('project_name', 'Quiz Project');
                     return form;
                 })(),
             });
@@ -367,8 +366,6 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                             </div>
                         ))}
                     </div>
-
-                    <button className="add-btn">➕ Thêm ghi chú</button>
                 </>
             )}
         </div>
