@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../assets/css/SourcePanel.css";
 
 const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
@@ -12,6 +12,11 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     const [loadingContent, setLoadingContent] = useState(false);
     const [fileImages, setFileImages] = useState([]);
     const [loadingFiles, setLoadingFiles] = useState(false);
+    const [cropMode, setCropMode] = useState(false);
+    const [cropData, setCropData] = useState(null);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [cropSelection, setCropSelection] = useState(null);
+    const canvasRef = useRef(null);
 
     // Thông báo lên App khi trạng thái thu gọn thay đổi
     useEffect(() => {
@@ -239,6 +244,191 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         }
     };
 
+    // Function to handle uploading cropped images
+    const handleUploadCropped = async (croppedBlob, sessionId) => {
+        try {
+            const formData = new FormData();
+            formData.append("file", croppedBlob, "cropped_image.png");
+            formData.append("session_id", sessionId);
+
+            console.log(`Uploading cropped image for session: ${sessionId}`);
+            const response = await fetch("http://0.0.0.0:8686/upload-crop", {
+                method: "POST",
+                body: formData,
+            });
+
+            const result = await response.json();
+            console.log("Upload cropped image response:", result);
+
+            if (response.ok) {
+                // Refresh files list to show the new cropped image
+                fetchSessionFiles();
+                return { success: true, result };
+            } else {
+                console.error("Failed to upload cropped image:", result);
+                return { success: false, error: result.error || 'Upload failed' };
+            }
+        } catch (error) {
+            console.error("Error uploading cropped image:", error);
+            return { success: false, error: error.message };
+        }
+    };
+
+    // Handle image click to start cropping
+    const handleImageClick = (e, imageIndex) => {
+        if (!cropMode) return;
+
+        const img = e.target;
+        const rect = img.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        if (!cropData) {
+            // Start cropping
+            setCropData({
+                startX: x,
+                startY: y,
+                imageIndex: imageIndex,
+                imageRect: rect,
+                naturalWidth: img.naturalWidth,
+                naturalHeight: img.naturalHeight,
+                displayWidth: img.offsetWidth,
+                displayHeight: img.offsetHeight
+            });
+            setCropSelection({
+                startX: x,
+                startY: y,
+                endX: x,
+                endY: y,
+                imageIndex: imageIndex
+            });
+        } else {
+            // End cropping and process
+            const endX = x;
+            const endY = y;
+
+            // Calculate crop area in display coordinates
+            const cropArea = {
+                x: Math.min(cropData.startX, endX),
+                y: Math.min(cropData.startY, endY),
+                width: Math.abs(endX - cropData.startX),
+                height: Math.abs(endY - cropData.startY),
+                imageIndex: imageIndex
+            };
+
+            if (cropArea.width > 10 && cropArea.height > 10) {
+                processCrop(cropArea, img);
+            }
+
+            setCropData(null);
+            setCropSelection(null);
+            setCropMode(false);
+        }
+    };
+
+    // Handle mouse move for crop selection
+    const handleMouseMove = (e, imageIndex) => {
+        if (!cropMode || !cropData || cropData.imageIndex !== imageIndex) return;
+
+        const img = e.target;
+        const rect = img.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Ensure coordinates are within image bounds
+        const boundedX = Math.max(0, Math.min(x, img.offsetWidth));
+        const boundedY = Math.max(0, Math.min(y, img.offsetHeight));
+
+        setCropSelection({
+            ...cropSelection,
+            endX: boundedX,
+            endY: boundedY
+        });
+    };
+
+    // Process the crop and upload
+    const processCrop = async (cropArea, imgElement) => {
+        try {
+            // Create a new image to ensure proper loading
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+
+            img.onload = async () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // Get the actual displayed size of the image
+                const displayedWidth = imgElement.offsetWidth;
+                const displayedHeight = imgElement.offsetHeight;
+
+                // Calculate scale factors from displayed size to natural size
+                const scaleX = img.naturalWidth / displayedWidth;
+                const scaleY = img.naturalHeight / displayedHeight;
+
+                // Debug logging
+                console.log('Image dimensions:', {
+                    natural: { width: img.naturalWidth, height: img.naturalHeight },
+                    displayed: { width: displayedWidth, height: displayedHeight },
+                    scale: { x: scaleX, y: scaleY },
+                    cropArea: cropArea
+                });
+
+                // Calculate the actual crop coordinates in the natural image size
+                // Add extra padding to ensure all text is captured
+                const widthPadding = Math.round(60 * scaleX); // Add padding for width
+                const heightPadding = Math.round(20 * scaleY); // Add padding for height
+
+                const actualCropX = Math.max(0, Math.round(cropArea.x * scaleX) - widthPadding);
+                const actualCropY = Math.max(0, Math.round(cropArea.y * scaleY) - heightPadding);
+                const actualCropWidth = Math.min(
+                    img.naturalWidth - actualCropX,
+                    Math.round(cropArea.width * scaleX) + (widthPadding * 2)
+                );
+                const actualCropHeight = Math.min(
+                    img.naturalHeight - actualCropY,
+                    Math.round(cropArea.height * scaleY) + (heightPadding * 2)
+                );
+
+                console.log('Actual crop coordinates:', {
+                    x: actualCropX,
+                    y: actualCropY,
+                    width: actualCropWidth,
+                    height: actualCropHeight,
+                    widthPadding: widthPadding,
+                    heightPadding: heightPadding
+                });
+
+                // Set canvas size to the actual crop dimensions
+                canvas.width = actualCropWidth;
+                canvas.height = actualCropHeight;
+
+                // Draw the cropped portion from the original image
+                ctx.drawImage(
+                    img,
+                    actualCropX, actualCropY, actualCropWidth, actualCropHeight,
+                    0, 0, actualCropWidth, actualCropHeight
+                );                // Convert to blob and upload
+                canvas.toBlob(async (blob) => {
+                    if (blob && sessionUUID) {
+                        const result = await handleUploadCropped(blob, sessionUUID);
+                        if (result.success) {
+                            console.log('Crop uploaded successfully');
+                        } else {
+                            console.error('Failed to upload crop:', result.error);
+                        }
+                    }
+                }, 'image/png', 1.0);
+            };
+
+            // Set the image source to trigger loading
+            img.src = imgElement.src;
+
+        } catch (error) {
+            console.error('Error processing crop:', error);
+            alert('Lỗi khi xử lý crop: ' + error.message);
+        }
+    };
+
     return (
         <div className={`source-panel ${collapsed ? "collapsed" : ""}`}>
             {/* Header */}
@@ -290,6 +480,14 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                         >
                             🔄
                         </button>
+                        <button
+                            onClick={() => setCropMode(!cropMode)}
+                            className={`btn text-xs px-1 ${cropMode ? 'bg-blue-500 text-white' : ''}`}
+                            style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
+                            title={cropMode ? "Tắt chế độ crop" : "Bật chế độ crop"}
+                        >
+                            ✂️
+                        </button>
                     </div>
 
                     <div className="source-list">
@@ -332,19 +530,51 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                 <p className="text-xs">Đang tải...</p>
                             ) : fileImages.length > 0 ? (
                                 <div className="overflow-y-auto max-h-full flex flex-col gap-2 items-center p-1 border rounded" style={{ scrollbarWidth: 'thin', width: '100%' }}>
+                                    {cropMode && (
+                                        <div className="text-xs text-blue-600 mb-2 p-2 bg-blue-50 rounded">
+                                            Chế độ crop đang bật. Click để chọn vùng bắt đầu, click lần nữa để kết thúc và crop.
+                                        </div>
+                                    )}
                                     {fileImages.map((img, idx) => (
-                                        <img
+                                        <div
                                             key={idx}
-                                            src={`data:image/png;base64,${img}`}
-                                            alt={`PDF page ${idx + 1}`}
-                                            className="border rounded shadow-sm"
                                             style={{
+                                                position: 'relative',
                                                 width: '95%',
-                                                objectFit: 'contain',
-                                                maxHeight: '500px',
-                                                margin: '5px auto'
+                                                margin: '5px auto',
+                                                display: 'inline-block'
                                             }}
-                                        />
+                                        >
+                                            <img
+                                                src={`data:image/png;base64,${img}`}
+                                                alt={`PDF page ${idx + 1}`}
+                                                className="border rounded shadow-sm"
+                                                style={{
+                                                    width: '100%',
+                                                    objectFit: 'contain',
+                                                    maxHeight: '500px',
+                                                    cursor: cropMode ? 'crosshair' : 'default'
+                                                }}
+                                                onClick={(e) => handleImageClick(e, idx)}
+                                                onMouseMove={(e) => handleMouseMove(e, idx)}
+                                            />
+                                            {/* Crop selection overlay */}
+                                            {cropMode && cropSelection && cropSelection.imageIndex === idx && (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        left: Math.min(cropSelection.startX, cropSelection.endX),
+                                                        top: Math.min(cropSelection.startY, cropSelection.endY),
+                                                        width: Math.abs(cropSelection.endX - cropSelection.startX),
+                                                        height: Math.abs(cropSelection.endY - cropSelection.startY),
+                                                        border: '2px dashed #007bff',
+                                                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                                        pointerEvents: 'none',
+                                                        zIndex: 10
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             ) : (
