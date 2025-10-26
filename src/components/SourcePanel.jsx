@@ -16,6 +16,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     const [cropData, setCropData] = useState(null);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [cropSelection, setCropSelection] = useState(null);
+    const [loadingFileStatus, setLoadingFileStatus] = useState({});
     const canvasRef = useRef(null);
 
     // Thông báo lên App khi trạng thái thu gọn thay đổi
@@ -31,13 +32,13 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
             // Initial fetch
             fetchSessionFiles();
 
-            // Set up polling to refresh files list periodically
-            const intervalId = setInterval(() => {
-                fetchSessionFiles();
-            }, 30000); // Poll every 30 seconds
+            // Set up polling to refresh files list periodically - disabled to prevent overriding checked state
+            // const intervalId = setInterval(() => {
+            //     fetchSessionFiles();
+            // }, 30000); // Poll every 30 seconds
 
             // Clean up interval on component unmount or when session changes
-            return () => clearInterval(intervalId);
+            // return () => clearInterval(intervalId);
         }
     }, [sessionUUID]);
 
@@ -55,29 +56,26 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                 const data = await response.json();
                 console.log("Session files response data:", data);
 
-                // Handle array of strings format [file_id1, file_id2, ...]
+                let prevChecked = {};
+                sources.forEach(s => { prevChecked[s.id] = s.checked; });
+
                 if (Array.isArray(data)) {
-                    console.log("Response is an array of file IDs");
                     const filesData = data.map(fileId => ({
                         name: `File ${fileId.substring(0, 8)}...`,
                         id: fileId,
-                        checked: false
+                        checked: typeof prevChecked[fileId] !== 'undefined' ? prevChecked[fileId] : false
                     }));
                     setSources(filesData);
                 }
-                // Handle object with files array format {files: [{file_id, filename, active}, ...]}
                 else if (data.files && Array.isArray(data.files)) {
-                    console.log("Response contains files array");
                     const filesData = data.files.map(file => ({
                         name: file.filename || `File ${file.file_id.substring(0, 8)}`,
                         id: file.file_id,
-                        checked: file.active || false
+                        checked: typeof prevChecked[file.file_id] !== 'undefined' ? prevChecked[file.file_id] : (file.active || false)
                     }));
                     setSources(filesData);
                 }
-                // Handle empty or unexpected response
                 else {
-                    console.log("Unexpected response format:", data);
                     setSources([]);
                 }
             } else {
@@ -106,12 +104,26 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     };
 
     const toggleItem = async (index) => {
-        const newSources = sources.map((s, i) => (i === index ? { ...s, checked: !s.checked } : s));
-        setSources(newSources);
+        const fileId = sources[index].id;
+        const newCheckedState = !sources[index].checked;
+
+        setLoadingFileStatus(prev => ({ ...prev, [fileId]: 'loading' }));
 
         // Update active status for this specific file
-        const source = sources[index];
-        await updateFileActiveStatus(source.id, !source.checked);
+        await updateFileActiveStatus(fileId, newCheckedState);
+
+        // Update sources state with new checked state
+        const newSources = sources.map((s, i) => (i === index ? { ...s, checked: newCheckedState } : s));
+        setSources(newSources);
+
+        setLoadingFileStatus(prev => ({ ...prev, [fileId]: 'done' }));
+        setTimeout(() => {
+            setLoadingFileStatus(prev => {
+                const copy = { ...prev };
+                delete copy[fileId];
+                return copy;
+            });
+        }, 1200); // Hiển thị dấu tích 1.2s rồi ẩn
     };
 
     const handleFileChange = (e) => {
@@ -159,12 +171,9 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
 
     const handleViewFile = async (filename, fileId) => {
         if (selectedFile === filename) {
-            // Toggle off if clicking the same file again
             setSelectedFile(null);
             setFileContent('');
             setFileImages([]);
-            // Update file active status to false when deselecting
-            await updateFileActiveStatus(fileId, false);
             return;
         }
 
@@ -174,9 +183,6 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         setFileContent('');
 
         try {
-            // Update file active status to true when selecting
-            await updateFileActiveStatus(fileId, true);
-
             console.log(`Fetching content for file: ${filename}, session: ${sessionUUID}, fileId: ${fileId}`);
             const res = await fetch(`http://0.0.0.0:8686/view-file?session_id=${sessionUUID}&file_id=${fileId}`);
             console.log("Response status:", res.status);
@@ -188,15 +194,12 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                     console.log("Response data:", Object.keys(data));
 
                     if (data.images_base64) {
-                        // Hiển thị nhiều trang PDF dưới dạng ảnh
                         setFileImages(data.images_base64);
                         console.log("Received multiple images, pages:", data.images_base64.length);
                     } else if (data.image_base64) {
-                        // Hiển thị dưới dạng ảnh (một trang)
                         setFileImages([data.image_base64]);
                         console.log("Received single image base64 data");
                     } else if (data.content) {
-                        // Hiển thị dưới dạng text
                         setFileContent(data.content);
                     } else if (data.error) {
                         setFileContent(`Lỗi: ${data.error}`);
@@ -205,7 +208,6 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                     }
                 } catch (parseError) {
                     console.error("Error parsing response:", parseError);
-                    // Nếu parse JSON lỗi, thử đọc như text
                     const text = await res.text();
                     setFileContent(text || 'Không thể hiển thị nội dung file');
                 }
@@ -429,6 +431,29 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         }
     };
 
+    const handleDeleteFile = async (fileId) => {
+        if (!fileId) return;
+        if (!window.confirm(`Bạn có chắc muốn xóa file ${fileId.substring(0, 8)}...?`)) return;
+        setLoadingFileStatus(prev => ({ ...prev, [fileId]: 'loading' }));
+        try {
+            const response = await fetch(`http://0.0.0.0:8686/delete-file/${fileId}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) {
+                throw new Error('Xóa file thất bại');
+            }
+            await fetchSessionFiles();
+        } catch (err) {
+            alert('Lỗi khi xóa file!');
+        } finally {
+            setLoadingFileStatus(prev => {
+                const copy = { ...prev };
+                delete copy[fileId];
+                return copy;
+            });
+        }
+    };
+
     return (
         <div className={`source-panel ${collapsed ? "collapsed" : ""}`}>
             {/* Header */}
@@ -502,21 +527,38 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
 
                         <div className="source-items">
                             {sources.map((s, i) => (
-                                <label key={i} className="source-item">
+                                <div key={i} className="source-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <div
                                         className="source-info"
-                                        onClick={() => handleViewFile(s.name, s.id)}
-                                        style={{ cursor: 'pointer' }}
+                                        style={{ cursor: 'pointer', flex: 1 }}
                                     >
                                         <span className="file-icon">📄</span>
-                                        <span className="file-name">{s.name}</span>
+                                        <span className="file-name" onClick={() => handleViewFile(s.name, s.id)}>{s.name}</span>
                                     </div>
-                                    <input
-                                        type="checkbox"
-                                        checked={s.checked}
-                                        onChange={() => toggleItem(i)}
-                                    />
-                                </label>
+                                    {loadingFileStatus[s.id] === 'loading' ? (
+                                        <span className="loading-spinner" style={{ width: 18, height: 18, display: 'inline-block' }}>
+                                            <svg viewBox="0 0 50 50" style={{ width: '100%', height: '100%', animation: 'spin 1s linear infinite' }}>
+                                                <circle cx="25" cy="25" r="20" fill="none" stroke="#007bff" strokeWidth="5" strokeDasharray="31.4 31.4" />
+                                            </svg>
+                                        </span>
+                                    ) : (
+                                        <>
+                                            <input
+                                                type="checkbox"
+                                                checked={s.checked}
+                                                onChange={(e) => { e.stopPropagation(); toggleItem(i); }}
+                                                style={{ marginLeft: '4px', position: 'relative', zIndex: 20 }}
+                                            />
+                                            <button
+                                                onClick={() => handleDeleteFile(s.id)}
+                                                style={{ marginLeft: '4px', color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                                                title="Xóa file"
+                                            >
+                                                Delete
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     </div>
