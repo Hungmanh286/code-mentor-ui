@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useImmer } from 'use-immer';
 import ChatMessages from '@/components/ChatMessages';
 import ChatInput from '@/components/ChatInput';
 import ChatSessionUUID from './ChatSessionUUID';
 import { useWebSocket } from '@/websocket';
 import { useLangGraphInterrupt } from "@copilotkit/react-core";
+import CustomScrollbar from './CustomScrollbar';
 
 // Add console logs to debug component mounting
-function Chatbot({ onSessionUUID, sessionId }) {
+const Chatbot = ({ onSessionUUID, sessionId }) => {
   console.log("Chatbot component rendering with:", { sessionId });
   const [messages, setMessages] = useImmer([]);
   const [newMessage, setNewMessage] = useState('');
@@ -96,27 +97,51 @@ function Chatbot({ onSessionUUID, sessionId }) {
   const displayUUID = sessionId || sessionUUID;
 
   return (
-    <div className='relative grow flex flex-col gap-6'>
+    <div className="flex flex-col h-full relative">
       <ChatSessionUUID sessionUUID={displayUUID} />
-      {messages.length === 0 && (
-        <div className='mt-3 font-urbanist text-primary-blue text-xl font-light space-y-2'>
-          <p>👋 Welcome {userInfo.username}!</p>
-          <p>Ask me anything about programming.</p>
+      {/* Chat messages container with custom scroll */}
+      <div
+        id="chatbot-messages-container"
+        className="flex-1 overflow-y-scroll"
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
+        <style>
+          {`#chatbot-messages-container::-webkit-scrollbar { display: none; }`}
+        </style>
+
+        {/* Chat messages content */}
+        <div className="p-4 space-y-4">
+          {messages.length === 0 && (
+            <div className='mt-3 font-urbanist text-primary-blue text-xl font-light space-y-2'>
+              <p>👋 Welcome {userInfo.username}!</p>
+              <p>Ask me anything about programming.</p>
+            </div>
+          )}
+          <ChatMessages
+            messages={messages}
+            isLoading={isLoading}
+            setNewMessage={setNewMessage}
+          />
         </div>
-      )}
-      <ChatMessages
-        messages={messages}
-        isLoading={isLoading}
-        setNewMessage={setNewMessage}
-      />
-      <ChatInput
-        newMessage={newMessage}
-        isLoading={isLoading}
-        setNewMessage={setNewMessage}
-        submitNewMessage={submitNewMessage}
-      />
+      </div>
+
+      {/* Custom scrollbar for chat messages */}
+      <CustomScrollbar containerId="chatbot-messages-container" />
+
+      {/* Input area - fixed at bottom */}
+      <div className="border-t bg-white p-4">
+        <ChatInput
+          newMessage={newMessage}
+          isLoading={isLoading}
+          setNewMessage={setNewMessage}
+          submitNewMessage={submitNewMessage}
+        />
+      </div>
     </div>
   );
-}
+};
 
 export default Chatbot;
