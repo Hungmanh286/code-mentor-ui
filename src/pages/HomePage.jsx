@@ -59,6 +59,38 @@ function HomePage() {
         }
     };
 
+    const deleteSession = async (sessionId, e) => {
+        e.preventDefault(); // Ngăn navigation khi click delete
+        e.stopPropagation();
+
+        if (!confirm(`Are you sure you want to delete session ${sessionId.substring(0, 8)}...?`)) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const response = await fetch(`http://0.0.0.0:8686/sessions/${sessionId}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log("Session deleted:", data);
+
+            // Refresh sessions list
+            await fetchSessions();
+
+        } catch (err) {
+            console.error("Failed to delete session:", err);
+            setError("Failed to delete session. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-gray-50">
             {/* Header */}
@@ -149,6 +181,12 @@ function HomePage() {
                                         </svg>
                                         Last active: Recently
                                     </div>
+                                    <button
+                                        onClick={(e) => deleteSession(session, e)}
+                                        className="mt-2 px-2 py-1 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
+                                    >
+                                        Delete
+                                    </button>
                                 </Link>
                             ))}
                         </div>
