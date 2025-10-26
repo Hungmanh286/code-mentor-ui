@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../assets/css/SourcePanel.css";
+import CustomScrollbar from './CustomScrollbar';
 
 const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     const [collapsed, setCollapsed] = useState(false);
@@ -247,13 +248,14 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     };
 
     // Function to handle uploading cropped images
-    const handleUploadCropped = async (croppedBlob, sessionId) => {
+    const handleUploadCropped = async (croppedBlob, sessionId, currentFileId) => {
         try {
             const formData = new FormData();
             formData.append("file", croppedBlob, "cropped_image.png");
             formData.append("session_id", sessionId);
+            formData.append("file_id", currentFileId);
 
-            console.log(`Uploading cropped image for session: ${sessionId}`);
+            console.log(`Uploading cropped image for session: ${sessionId}, file_id: ${currentFileId}`);
             const response = await fetch("http://0.0.0.0:8686/upload-crop", {
                 method: "POST",
                 body: formData,
@@ -412,11 +414,17 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                 );                // Convert to blob and upload
                 canvas.toBlob(async (blob) => {
                     if (blob && sessionUUID) {
-                        const result = await handleUploadCropped(blob, sessionUUID);
-                        if (result.success) {
-                            console.log('Crop uploaded successfully');
+                        // Get the current file ID from the selected file
+                        const currentFileId = sources.find(s => s.name === selectedFile)?.id;
+                        if (currentFileId) {
+                            const result = await handleUploadCropped(blob, sessionUUID, currentFileId);
+                            if (result.success) {
+                                console.log('Crop uploaded successfully');
+                            } else {
+                                console.error('Failed to upload crop:', result.error);
+                            }
                         } else {
-                            console.error('Failed to upload crop:', result.error);
+                            console.error('Could not find current file ID for cropping');
                         }
                     }
                 }, 'image/png', 1.0);
@@ -455,7 +463,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     };
 
     return (
-        <div className={`source-panel ${collapsed ? "collapsed" : ""}`}>
+        <div className="flex flex-col h-full relative">
             {/* Header */}
             <div className="source-header">
                 {!collapsed && <h3>Nguồn</h3>}
@@ -468,166 +476,185 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                 </button>
             </div>
 
-            {/* Content */}
-            {!collapsed && (
-                <>
-                    <div className="source-actions" style={{ fontSize: '0.75rem', gap: '4px', marginBottom: '4px', display: 'flex', height: '30px', alignItems: 'center' }}>
-                        <div style={{ height: '24px', display: 'flex', alignItems: 'center' }}>
-                            <label style={{ fontSize: '0.75rem', marginRight: '4px' }}>PDF:</label>
-                            <input
-                                type="file"
-                                accept="application/pdf"
-                                onChange={handleFileChange}
-                                className="text-xs"
-                                style={{ width: '80px', height: '20px', fontSize: '0.75rem' }}
-                            />
-                            <button
-                                onClick={handleUpload}
-                                disabled={!file || uploading || !sessionUUID}
-                                className="ml-1 border rounded px-1 text-primary-blue hover:bg-gray-200 text-xs"
-                                style={{ minWidth: '50px', height: '20px', fontSize: '0.75rem' }}
-                            >
-                                {uploading ? "Đang tải..." : "Tải lên"}
-                            </button>
-                            {uploadResult && (
-                                <div className="ml-1 text-xs text-green-600" style={{ fontSize: '0.7rem' }}>{uploadResult}</div>
-                            )}
-                            {!sessionUUID && (
-                                <div className="ml-1 text-xs text-yellow-600" style={{ fontSize: '0.7rem' }}>
-                                    Chờ session
-                                </div>
-                            )}
-                        </div>
-                        <button
-                            onClick={handleRefresh}
-                            className="btn text-xs px-1"
-                            style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
-                        >
-                            🔄
-                        </button>
-                        <button
-                            onClick={() => setCropMode(!cropMode)}
-                            className={`btn text-xs px-1 ${cropMode ? 'bg-blue-500 text-white' : ''}`}
-                            style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
-                            title={cropMode ? "Tắt chế độ crop" : "Bật chế độ crop"}
-                        >
-                            ✂️
-                        </button>
-                    </div>
+            {/* Source content container with custom scroll */}
+            <div
+                id="source-panel-content-container"
+                className="flex-1 overflow-y-scroll"
+                style={{
+                    scrollbarWidth: "none",
+                    msOverflowStyle: "none",
+                }}
+            >
+                <style>
+                    {`#source-panel-content-container::-webkit-scrollbar { display: none; }`}
+                </style>
 
-                    <div className="source-list">
-                        <label className="select-all">
-                            <span>Select all sources</span>
-                            <input
-                                type="checkbox"
-                                checked={sources.every((s) => s.checked)}
-                                onChange={toggleAll}
-                            />
-                        </label>
-
-                        <div className="source-items">
-                            {sources.map((s, i) => (
-                                <div key={i} className="source-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <div
-                                        className="source-info"
-                                        style={{ cursor: 'pointer', flex: 1 }}
+                {/* Source content */}
+                <div className="p-4">
+                    {!collapsed && (
+                        <>
+                            <div className="source-actions" style={{ fontSize: '0.75rem', gap: '4px', marginBottom: '4px', display: 'flex', height: '30px', alignItems: 'center' }}>
+                                <div style={{ height: '24px', display: 'flex', alignItems: 'center' }}>
+                                    <label style={{ fontSize: '0.75rem', marginRight: '4px' }}>PDF:</label>
+                                    <input
+                                        type="file"
+                                        accept="application/pdf"
+                                        onChange={handleFileChange}
+                                        className="text-xs"
+                                        style={{ width: '80px', height: '20px', fontSize: '0.75rem' }}
+                                    />
+                                    <button
+                                        onClick={handleUpload}
+                                        disabled={!file || uploading || !sessionUUID}
+                                        className="ml-1 border rounded px-1 text-primary-blue hover:bg-gray-200 text-xs"
+                                        style={{ minWidth: '50px', height: '20px', fontSize: '0.75rem' }}
                                     >
-                                        <span className="file-icon">📄</span>
-                                        <span className="file-name" onClick={() => handleViewFile(s.name, s.id)}>{s.name}</span>
-                                    </div>
-                                    {loadingFileStatus[s.id] === 'loading' ? (
-                                        <span className="loading-spinner" style={{ width: 18, height: 18, display: 'inline-block' }}>
-                                            <svg viewBox="0 0 50 50" style={{ width: '100%', height: '100%', animation: 'spin 1s linear infinite' }}>
-                                                <circle cx="25" cy="25" r="20" fill="none" stroke="#007bff" strokeWidth="5" strokeDasharray="31.4 31.4" />
-                                            </svg>
-                                        </span>
-                                    ) : (
-                                        <>
-                                            <input
-                                                type="checkbox"
-                                                checked={s.checked}
-                                                onChange={(e) => { e.stopPropagation(); toggleItem(i); }}
-                                                style={{ marginLeft: '4px', position: 'relative', zIndex: 20 }}
-                                            />
-                                            <button
-                                                onClick={() => handleDeleteFile(s.id)}
-                                                style={{ marginLeft: '4px', color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
-                                                title="Xóa file"
-                                            >
-                                                Delete
-                                            </button>
-                                        </>
+                                        {uploading ? "Đang tải..." : "Tải lên"}
+                                    </button>
+                                    {uploadResult && (
+                                        <div className="ml-1 text-xs text-green-600" style={{ fontSize: '0.7rem' }}>{uploadResult}</div>
                                     )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-
-
-                    {selectedFile && (
-                        <div className="file-content mt-2 p-2 border rounded bg-gray-50" style={{ height: '80vh', maxHeight: '80vh', overflowY: 'auto', width: '100%', flex: '1 0 50%' }}>
-                            <h4 className="font-bold mb-1 text-xs">Nội dung: {selectedFile}</h4>
-                            {loadingContent ? (
-                                <p className="text-xs">Đang tải...</p>
-                            ) : fileImages.length > 0 ? (
-                                <div className="overflow-y-auto max-h-full flex flex-col gap-2 items-center p-1 border rounded" style={{ scrollbarWidth: 'thin', width: '100%' }}>
-                                    {cropMode && (
-                                        <div className="text-xs text-blue-600 mb-2 p-2 bg-blue-50 rounded">
-                                            Chế độ crop đang bật. Click để chọn vùng bắt đầu, click lần nữa để kết thúc và crop.
+                                    {!sessionUUID && (
+                                        <div className="ml-1 text-xs text-yellow-600" style={{ fontSize: '0.7rem' }}>
+                                            Chờ session
                                         </div>
                                     )}
-                                    {fileImages.map((img, idx) => (
-                                        <div
-                                            key={idx}
-                                            style={{
-                                                position: 'relative',
-                                                width: '95%',
-                                                margin: '5px auto',
-                                                display: 'inline-block'
-                                            }}
-                                        >
-                                            <img
-                                                src={`data:image/png;base64,${img}`}
-                                                alt={`PDF page ${idx + 1}`}
-                                                className="border rounded shadow-sm"
-                                                style={{
-                                                    width: '100%',
-                                                    objectFit: 'contain',
-                                                    maxHeight: '500px',
-                                                    cursor: cropMode ? 'crosshair' : 'default'
-                                                }}
-                                                onClick={(e) => handleImageClick(e, idx)}
-                                                onMouseMove={(e) => handleMouseMove(e, idx)}
-                                            />
-                                            {/* Crop selection overlay */}
-                                            {cropMode && cropSelection && cropSelection.imageIndex === idx && (
-                                                <div
-                                                    style={{
-                                                        position: 'absolute',
-                                                        left: Math.min(cropSelection.startX, cropSelection.endX),
-                                                        top: Math.min(cropSelection.startY, cropSelection.endY),
-                                                        width: Math.abs(cropSelection.endX - cropSelection.startX),
-                                                        height: Math.abs(cropSelection.endY - cropSelection.startY),
-                                                        border: '2px dashed #007bff',
-                                                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                                                        pointerEvents: 'none',
-                                                        zIndex: 10
-                                                    }}
-                                                />
+                                </div>
+                                <button
+                                    onClick={handleRefresh}
+                                    className="btn text-xs px-1"
+                                    style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
+                                >
+                                    🔄
+                                </button>
+                                <button
+                                    onClick={() => setCropMode(!cropMode)}
+                                    className={`btn text-xs px-1 ${cropMode ? 'bg-blue-500 text-white' : ''}`}
+                                    style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
+                                    title={cropMode ? "Tắt chế độ crop" : "Bật chế độ crop"}
+                                >
+                                    ✂️
+                                </button>
+                            </div>
+
+                            <div className="source-list">
+                                <label className="select-all">
+                                    <span>Select all sources</span>
+                                    <input
+                                        type="checkbox"
+                                        checked={sources.every((s) => s.checked)}
+                                        onChange={toggleAll}
+                                    />
+                                </label>
+
+                                <div className="source-items">
+                                    {sources.map((s, i) => (
+                                        <div key={i} className="source-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <div
+                                                className="source-info"
+                                                style={{ cursor: 'pointer', flex: 1 }}
+                                            >
+                                                <span className="file-icon">📄</span>
+                                                <span className="file-name" onClick={() => handleViewFile(s.name, s.id)}>{s.name}</span>
+                                            </div>
+                                            {loadingFileStatus[s.id] === 'loading' ? (
+                                                <span className="loading-spinner" style={{ width: 18, height: 18, display: 'inline-block' }}>
+                                                    <svg viewBox="0 0 50 50" style={{ width: '100%', height: '100%', animation: 'spin 1s linear infinite' }}>
+                                                        <circle cx="25" cy="25" r="20" fill="none" stroke="#007bff" strokeWidth="5" strokeDasharray="31.4 31.4" />
+                                                    </svg>
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={s.checked}
+                                                        onChange={(e) => { e.stopPropagation(); toggleItem(i); }}
+                                                        style={{ marginLeft: '4px', position: 'relative', zIndex: 20 }}
+                                                    />
+                                                    <button
+                                                        onClick={() => handleDeleteFile(s.id)}
+                                                        style={{ marginLeft: '4px', color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                                                        title="Xóa file"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
-                                <pre className="whitespace-pre-wrap text-xs max-h-full overflow-y-auto p-1 bg-white border rounded">
-                                    {fileContent}
-                                </pre>
+                            </div>
+
+
+
+                            {selectedFile && (
+                                <div className="file-content mt-2 p-2 border rounded bg-gray-50" style={{ height: '80vh', maxHeight: '80vh', overflowY: 'auto', width: '100%', flex: '1 0 50%' }}>
+                                    <h4 className="font-bold mb-1 text-xs">Nội dung: {selectedFile}</h4>
+                                    {loadingContent ? (
+                                        <p className="text-xs">Đang tải...</p>
+                                    ) : fileImages.length > 0 ? (
+                                        <div className="overflow-y-auto max-h-full flex flex-col gap-2 items-center p-1 border rounded" style={{ scrollbarWidth: 'thin', width: '100%' }}>
+                                            {cropMode && (
+                                                <div className="text-xs text-blue-600 mb-2 p-2 bg-blue-50 rounded">
+                                                    Chế độ crop đang bật. Click để chọn vùng bắt đầu, click lần nữa để kết thúc và crop.
+                                                </div>
+                                            )}
+                                            {fileImages.map((img, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    style={{
+                                                        position: 'relative',
+                                                        width: '95%',
+                                                        margin: '5px auto',
+                                                        display: 'inline-block'
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={`data:image/png;base64,${img}`}
+                                                        alt={`PDF page ${idx + 1}`}
+                                                        className="border rounded shadow-sm"
+                                                        style={{
+                                                            width: '100%',
+                                                            objectFit: 'contain',
+                                                            maxHeight: '500px',
+                                                            cursor: cropMode ? 'crosshair' : 'default'
+                                                        }}
+                                                        onClick={(e) => handleImageClick(e, idx)}
+                                                        onMouseMove={(e) => handleMouseMove(e, idx)}
+                                                    />
+                                                    {/* Crop selection overlay */}
+                                                    {cropMode && cropSelection && cropSelection.imageIndex === idx && (
+                                                        <div
+                                                            style={{
+                                                                position: 'absolute',
+                                                                left: Math.min(cropSelection.startX, cropSelection.endX),
+                                                                top: Math.min(cropSelection.startY, cropSelection.endY),
+                                                                width: Math.abs(cropSelection.endX - cropSelection.startX),
+                                                                height: Math.abs(cropSelection.endY - cropSelection.startY),
+                                                                border: '2px dashed #007bff',
+                                                                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                                                pointerEvents: 'none',
+                                                                zIndex: 10
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <pre className="whitespace-pre-wrap text-xs max-h-full overflow-y-auto p-1 bg-white border rounded">
+                                            {fileContent}
+                                        </pre>
+                                    )}
+                                </div>
                             )}
-                        </div>
+                        </>
                     )}
-                </>
-            )}
+                </div>
+            </div>
+
+            {/* Custom scrollbar for source content */}
+            <CustomScrollbar containerId="source-panel-content-container" />
         </div>
     );
 };
