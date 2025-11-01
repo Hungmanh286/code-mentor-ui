@@ -11,6 +11,8 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
     const [loadingQuestions, setLoadingQuestions] = useState(false);
     const [userAnswers, setUserAnswers] = useState({});
     const [showingResults, setShowingResults] = useState({});
+    const [quizScore, setQuizScore] = useState(null);
+    const [showScoreModal, setShowScoreModal] = useState(false);
 
     // Thông báo lên App khi trạng thái thu gọn thay đổi
     useEffect(() => {
@@ -92,29 +94,78 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
     const closeQuestions = () => {
         setSelectedProject(null);
         setQuestions([]);
+        setUserAnswers({});
+        setShowingResults({});
+        setQuizScore(null);
+        setShowScoreModal(false);
     };
 
-    const handleOptionClick = (questionIndex, optionIndex) => {
+    const handleOptionClick = async (questionIndex, optionIndex) => {
         // Chỉ cho phép chọn khi chưa hiển thị kết quả
         if (!showingResults[questionIndex]) {
-            setUserAnswers(prev => ({
-                ...prev,
+            const newUserAnswers = {
+                ...userAnswers,
                 [questionIndex]: optionIndex
-            }));
+            };
+
+            setUserAnswers(newUserAnswers);
 
             setShowingResults(prev => ({
                 ...prev,
                 [questionIndex]: true
             }));
+
+            // Gửi đáp án về server
+            const questionId = questions[questionIndex].id;
+            try {
+                const formData = new FormData();
+                formData.append('answer', optionIndex);
+
+                await fetch(`http://0.0.0.0:8686/add_answer/${questionId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (error) {
+                console.error("Error submitting answer:", error);
+            }
+
+            // Kiểm tra xem đã trả lời hết tất cả câu hỏi chưa
+            const totalAnswered = Object.keys(newUserAnswers).length;
+            if (totalAnswered === questions.length) {
+                // Tự động chấm điểm khi hoàn thành tất cả câu hỏi
+                setTimeout(() => {
+                    handleFinishQuiz();
+                }, 500); // Delay 500ms để người dùng thấy đáp án được chọn
+            }
         }
     };
 
-    useEffect(() => {
-        if (currentQuestionIndex !== null) {
-            setUserAnswers({});
-            setShowingResults({});
-        }
-    }, [currentQuestionIndex]);
+    const calculateScore = () => {
+        let correctCount = 0;
+        let totalAnswered = 0;
+
+        questions.forEach((question, index) => {
+            if (userAnswers[index] !== undefined) {
+                totalAnswered++;
+                if (userAnswers[index] === question.correct_answer) {
+                    correctCount++;
+                }
+            }
+        });
+
+        return {
+            correct: correctCount,
+            total: questions.length,
+            answered: totalAnswered,
+            percentage: questions.length > 0 ? ((correctCount / questions.length) * 100).toFixed(1) : 0
+        };
+    };
+
+    const handleFinishQuiz = () => {
+        const score = calculateScore();
+        setQuizScore(score);
+        setShowScoreModal(true);
+    };
 
     const tools = [
         { title: "Bản đồ tư duy", color: "mindmap", onClick: () => { } },
@@ -346,6 +397,83 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                                     )}
                                 </>
                             )}
+                        </div>
+                    )}
+
+                    {showScoreModal && quizScore && (
+                        <div style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 1000
+                        }}>
+                            <div style={{
+                                backgroundColor: 'white',
+                                padding: '30px',
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                minWidth: '300px',
+                                textAlign: 'center'
+                            }}>
+                                <h3 style={{ marginTop: 0, color: '#1890ff' }}>Kết quả bài kiểm tra</h3>
+
+                                <div style={{
+                                    fontSize: '48px',
+                                    fontWeight: 'bold',
+                                    color: quizScore.percentage >= 80 ? '#52c41a' :
+                                        quizScore.percentage >= 50 ? '#fa8c16' : '#f5222d',
+                                    margin: '20px 0'
+                                }}>
+                                    {quizScore.percentage}%
+                                </div>
+
+                                <div style={{ fontSize: '16px', color: '#595959', marginBottom: '20px' }}>
+                                    <div style={{ marginBottom: '8px' }}>
+                                        Đúng: <strong style={{ color: '#52c41a' }}>{quizScore.correct}</strong> / {quizScore.total}
+                                    </div>
+                                    <div style={{ marginBottom: '8px' }}>
+                                        Sai: <strong style={{ color: '#f5222d' }}>{quizScore.total - quizScore.correct}</strong> / {quizScore.total}
+                                    </div>
+                                    {quizScore.answered < quizScore.total && (
+                                        <div style={{ color: '#fa8c16', fontSize: '14px', marginTop: '10px' }}>
+                                            ⚠️ Bạn chưa trả lời {quizScore.total - quizScore.answered} câu
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{
+                                    padding: '12px',
+                                    backgroundColor: '#f0f5ff',
+                                    borderRadius: '6px',
+                                    marginBottom: '20px',
+                                    fontSize: '14px'
+                                }}>
+                                    {quizScore.percentage >= 80 ? '🎉 Xuất sắc!' :
+                                        quizScore.percentage >= 50 ? '👍 Khá tốt!' : '💪 Cố gắng hơn nhé!'}
+                                </div>
+
+                                <button
+                                    onClick={() => setShowScoreModal(false)}
+                                    style={{
+                                        padding: '10px 24px',
+                                        borderRadius: '6px',
+                                        border: 'none',
+                                        backgroundColor: '#1890ff',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        fontSize: '16px',
+                                        fontWeight: '500'
+                                    }}
+                                >
+                                    Đóng
+                                </button>
+                            </div>
                         </div>
                     )}
 
