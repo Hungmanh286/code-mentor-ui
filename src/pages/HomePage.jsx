@@ -211,7 +211,10 @@ function HomePage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Learning Streak */}
-                            <Card className="relative overflow-hidden">
+                            <Card
+                                className="relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                                onClick={() => navigate('/streaks')}
+                            >
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-full -mr-16 -mt-16" />
                                 <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between">
@@ -247,7 +250,10 @@ function HomePage() {
                             </Card>
 
                             {/* This Week Activity */}
-                            <Card className="relative overflow-hidden">
+                            <Card
+                                className="relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                                onClick={() => navigate('/hours-detail')}
+                            >
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full -mr-16 -mt-16" />
                                 <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between">
@@ -290,7 +296,10 @@ function HomePage() {
                             </Card>
 
                             {/* Achievements */}
-                            <Card className="relative overflow-hidden">
+                            <Card
+                                className="relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                                onClick={() => navigate('/achievements')}
+                            >
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-400/20 to-amber-400/20 rounded-full -mr-16 -mt-16" />
                                 <CardHeader className="pb-3">
                                     <div className="flex items-center justify-between">
@@ -337,7 +346,7 @@ function HomePage() {
             {/* Footer */}
             <footer className="w-full bg-white border-t border-gray-200 py-4 mt-auto">
                 <div className="container mx-auto px-4">
-                    <p className="text-center text-gray-500 text-sm">© 2023 Learning Platform. All rights reserved.</p>
+                    <p className="text-center text-gray-500 text-sm">© 2025 Learning Platform. All rights reserved.</p>
                 </div>
             </footer>
         </div>

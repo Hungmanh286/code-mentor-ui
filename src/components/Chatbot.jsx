@@ -12,6 +12,7 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
   console.log("Chatbot component rendering with:", { sessionId });
   const [messages, setMessages] = useImmer([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Use provided sessionId if available
   const { response, nextQuestions, error, errorCode, isOpen, isLoading, userInfo, sessionUUID, sendMessage, setError } = useWebSocket(sessionId);
@@ -21,6 +22,51 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
     if (sessionId) {
       console.log("Received sessionId from props:", sessionId);
     }
+  }, [sessionId]);
+
+  // Fetch chat history when sessionId is available
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      if (!sessionId) return;
+
+      try {
+        setIsLoadingHistory(true);
+        const response = await fetch(`http://0.0.0.0:8686/history-chat/${sessionId}`);
+        const data = await response.json();
+
+        if (data.history && data.history.length > 0) {
+          const historyMessages = [];
+          data.history.forEach(item => {
+            if (item.question) {
+              historyMessages.push({
+                role: 'user',
+                content: item.question,
+                error: "",
+                errorCode: 0
+              });
+            }
+            if (item.answer) {
+              historyMessages.push({
+                role: 'bot',
+                content: item.answer,
+                sources: [],
+                nextQuestions: [],
+                error: "",
+                errorCode: 0
+              });
+            }
+          });
+          setMessages(historyMessages);
+          console.log("Loaded chat history:", historyMessages.length, "messages");
+        }
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    fetchChatHistory();
   }, [sessionId]);
 
   // Truyền sessionUUID lên component cha mỗi khi có thay đổi
@@ -114,12 +160,17 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
 
         {/* Chat messages content */}
         <div className="p-4 space-y-4">
-          {messages.length === 0 && (
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Đang tải lịch sử chat...</span>
+            </div>
+          ) : messages.length === 0 ? (
             <div className='mt-3 font-urbanist text-primary-blue text-xl font-light space-y-2'>
               <p>👋 Welcome {userInfo.username}!</p>
               <p>Ask me anything about programming.</p>
             </div>
-          )}
+          ) : null}
           <ChatMessages
             messages={messages}
             isLoading={isLoading}

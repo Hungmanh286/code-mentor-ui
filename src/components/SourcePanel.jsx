@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { RefreshCw, Lightbulb, Trash2 } from 'lucide-react';
 import "../assets/css/SourcePanel.css";
 import CustomScrollbar from './CustomScrollbar';
 
@@ -18,6 +19,8 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [cropSelection, setCropSelection] = useState(null);
     const [loadingFileStatus, setLoadingFileStatus] = useState({});
+    const [zoomLevel, setZoomLevel] = useState(100);
+    const [croppedAreas, setCroppedAreas] = useState([]);
     const canvasRef = useRef(null);
 
     // Thông báo lên App khi trạng thái thu gọn thay đổi
@@ -60,23 +63,15 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                 let prevChecked = {};
                 sources.forEach(s => { prevChecked[s.id] = s.checked; });
 
+                // Handle new API format: array of {file_id, file_name}
                 if (Array.isArray(data)) {
-                    const filesData = data.map(fileId => ({
-                        name: `File ${fileId.substring(0, 8)}...`,
-                        id: fileId,
-                        checked: typeof prevChecked[fileId] !== 'undefined' ? prevChecked[fileId] : false
-                    }));
-                    setSources(filesData);
-                }
-                else if (data.files && Array.isArray(data.files)) {
-                    const filesData = data.files.map(file => ({
-                        name: file.filename || `File ${file.file_id.substring(0, 8)}`,
+                    const filesData = data.map(file => ({
+                        name: file.file_name || `File ${file.file_id.substring(0, 8)}...`,
                         id: file.file_id,
-                        checked: typeof prevChecked[file.file_id] !== 'undefined' ? prevChecked[file.file_id] : (file.active || false)
+                        checked: typeof prevChecked[file.file_id] !== 'undefined' ? prevChecked[file.file_id] : false
                     }));
                     setSources(filesData);
-                }
-                else {
+                } else {
                     setSources([]);
                 }
             } else {
@@ -175,6 +170,8 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
             setSelectedFile(null);
             setFileContent('');
             setFileImages([]);
+            setZoomLevel(100);
+            setCroppedAreas([]);
             return;
         }
 
@@ -182,6 +179,8 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         setLoadingContent(true);
         setFileImages([]);
         setFileContent('');
+        setZoomLevel(100);
+        setCroppedAreas([]);
 
         try {
             console.log(`Fetching content for file: ${filename}, session: ${sessionUUID}, fileId: ${fileId}`);
@@ -322,11 +321,20 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
 
             if (cropArea.width > 10 && cropArea.height > 10) {
                 processCrop(cropArea, img);
+
+                // Save cropped area for display - replace previous crop, don't accumulate
+                setCroppedAreas([{
+                    imageIndex: imageIndex,
+                    x: Math.min(cropData.startX, endX),
+                    y: Math.min(cropData.startY, endY),
+                    width: Math.abs(endX - cropData.startX),
+                    height: Math.abs(endY - cropData.startY)
+                }]);
             }
 
             setCropData(null);
             setCropSelection(null);
-            setCropMode(false);
+            // Don't turn off crop mode - setCropMode(false);
         }
     };
 
@@ -522,18 +530,41 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                 </div>
                                 <button
                                     onClick={handleRefresh}
-                                    className="btn text-xs px-1"
-                                    style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
+                                    className="btn text-xs px-2 py-1 border rounded hover:bg-gray-200 transition-colors"
+                                    style={{
+                                        minWidth: '40px',
+                                        height: '24px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px'
+                                    }}
+                                    title="Làm mới danh sách file"
                                 >
-                                    🔄
+                                    <RefreshCw size={14} />
                                 </button>
                                 <button
-                                    onClick={() => setCropMode(!cropMode)}
-                                    className={`btn text-xs px-1 ${cropMode ? 'bg-blue-500 text-white' : ''}`}
-                                    style={{ minWidth: '40px', height: '20px', fontSize: '0.75rem' }}
-                                    title={cropMode ? "Tắt chế độ crop" : "Bật chế độ crop"}
+                                    onClick={() => {
+                                        setCropMode(!cropMode);
+                                        if (cropMode) {
+                                            // Clear cropped areas when turning off crop mode
+                                            setCroppedAreas([]);
+                                            setCropData(null);
+                                            setCropSelection(null);
+                                        }
+                                    }}
+                                    className={`btn text-xs px-2 py-1 border rounded transition-colors ${cropMode ? 'bg-amber-500 text-white hover:bg-amber-600' : 'hover:bg-gray-200'}`}
+                                    style={{
+                                        minWidth: '40px',
+                                        height: '24px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px'
+                                    }}
+                                    title={cropMode ? "Tắt chế độ giải thích" : "Bật chế độ giải thích"}
                                 >
-                                    ✂️
+                                    <Lightbulb size={14} />
                                 </button>
                             </div>
 
@@ -573,10 +604,11 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                                     />
                                                     <button
                                                         onClick={() => handleDeleteFile(s.id)}
-                                                        style={{ marginLeft: '4px', color: 'red', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors"
+                                                        style={{ marginLeft: '4px', background: 'none', border: 'none', cursor: 'pointer' }}
                                                         title="Xóa file"
                                                     >
-                                                        Delete
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </>
                                             )}
@@ -589,14 +621,44 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
 
                             {selectedFile && (
                                 <div className="file-content mt-2 p-2 border rounded bg-gray-50" style={{ height: '80vh', maxHeight: '80vh', overflowY: 'auto', width: '100%', flex: '1 0 50%' }}>
-                                    <h4 className="font-bold mb-1 text-xs">Nội dung: {selectedFile}</h4>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="font-bold text-xs">Nội dung: {selectedFile}</h4>
+                                        {fileImages.length > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => setZoomLevel(Math.max(50, zoomLevel - 10))}
+                                                    className="px-2 py-1 text-xs border rounded hover:bg-gray-200"
+                                                    title="Zoom out"
+                                                >
+                                                    -
+                                                </button>
+                                                <span className="text-xs font-semibold min-w-[45px] text-center">
+                                                    {zoomLevel}%
+                                                </span>
+                                                <button
+                                                    onClick={() => setZoomLevel(Math.min(200, zoomLevel + 10))}
+                                                    className="px-2 py-1 text-xs border rounded hover:bg-gray-200"
+                                                    title="Zoom in"
+                                                >
+                                                    +
+                                                </button>
+                                                <button
+                                                    onClick={() => setZoomLevel(100)}
+                                                    className="px-2 py-1 text-xs border rounded hover:bg-gray-200"
+                                                    title="Reset zoom"
+                                                >
+                                                    Reset
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                     {loadingContent ? (
                                         <p className="text-xs">Đang tải...</p>
                                     ) : fileImages.length > 0 ? (
                                         <div className="overflow-y-auto max-h-full flex flex-col gap-2 items-center p-1 border rounded" style={{ scrollbarWidth: 'thin', width: '100%' }}>
                                             {cropMode && (
-                                                <div className="text-xs text-blue-600 mb-2 p-2 bg-blue-50 rounded">
-                                                    Chế độ crop đang bật. Click để chọn vùng bắt đầu, click lần nữa để kết thúc và crop.
+                                                <div className="text-xs text-amber-700 mb-2 p-2 bg-amber-50 rounded border border-amber-200">
+                                                    💡 Chế độ giải thích đang bật. Click để chọn vùng cần giải thích, click lần nữa để hoàn tất.
                                                 </div>
                                             )}
                                             {fileImages.map((img, idx) => (
@@ -604,7 +666,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                                     key={idx}
                                                     style={{
                                                         position: 'relative',
-                                                        width: '95%',
+                                                        width: `${zoomLevel}%`,
                                                         margin: '5px auto',
                                                         display: 'inline-block'
                                                     }}
@@ -616,13 +678,13 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                                         style={{
                                                             width: '100%',
                                                             objectFit: 'contain',
-                                                            maxHeight: '500px',
+                                                            maxHeight: 'none',
                                                             cursor: cropMode ? 'crosshair' : 'default'
                                                         }}
                                                         onClick={(e) => handleImageClick(e, idx)}
                                                         onMouseMove={(e) => handleMouseMove(e, idx)}
                                                     />
-                                                    {/* Crop selection overlay */}
+                                                    {/* Current crop selection overlay (while selecting) */}
                                                     {cropMode && cropSelection && cropSelection.imageIndex === idx && (
                                                         <div
                                                             style={{
@@ -631,13 +693,30 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                                                                 top: Math.min(cropSelection.startY, cropSelection.endY),
                                                                 width: Math.abs(cropSelection.endX - cropSelection.startX),
                                                                 height: Math.abs(cropSelection.endY - cropSelection.startY),
-                                                                border: '2px dashed #007bff',
-                                                                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                                                border: '2px dashed #f59e0b',
+                                                                backgroundColor: 'rgba(245, 158, 11, 0.15)',
                                                                 pointerEvents: 'none',
                                                                 zIndex: 10
                                                             }}
                                                         />
                                                     )}
+                                                    {/* Previously cropped area overlay (after crop completed) */}
+                                                    {croppedAreas.filter(area => area.imageIndex === idx).map((area, areaIdx) => (
+                                                        <div
+                                                            key={areaIdx}
+                                                            style={{
+                                                                position: 'absolute',
+                                                                left: area.x,
+                                                                top: area.y,
+                                                                width: area.width,
+                                                                height: area.height,
+                                                                border: '2px solid #f59e0b',
+                                                                backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                                                pointerEvents: 'none',
+                                                                zIndex: 9
+                                                            }}
+                                                        />
+                                                    ))}
                                                 </div>
                                             ))}
                                         </div>
