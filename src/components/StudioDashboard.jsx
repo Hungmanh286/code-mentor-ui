@@ -38,6 +38,53 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
         fetchProjects();
     }, [sessionUUID]);
 
+    useEffect(() => {
+        if (!sessionUUID) return;
+        const sse = new EventSource(`http://localhost:8686/sse/notify?session_id=${sessionUUID}`);
+        sse.onopen = function () {
+            console.log("SSE connected!");
+        };
+        sse.onmessage = function (event) {
+            if (event.data === "done") {
+                console.log("Server đã xử lý xong, gọi API GET để lấy dữ liệu mới!");
+                fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`)
+                    .then(res => res.json())
+                    .then(async data => {
+                        const newProjects = data.projects || [];
+                        setProjects(newProjects);
+
+                        // Tự động chọn project mới nhất
+                        if (newProjects.length > 0) {
+                            const latestProject = newProjects[newProjects.length - 1];
+                            const projectId = latestProject.id;
+
+                            setLoadingQuestions(true);
+                            setSelectedProject(projectId);
+                            try {
+                                const response = await fetch(`http://0.0.0.0:8686/project-questions/${projectId}`);
+                                const qData = await response.json();
+                                setQuestions(qData.questions || []);
+                                setCurrentQuestionIndex(0);
+                            } catch (error) {
+                                console.error("Error fetching questions:", error);
+                                setQuestions([]);
+                            } finally {
+                                setLoadingQuestions(false);
+                            }
+                        }
+                    })
+                    .catch(() => setProjects([]));
+            }
+        };
+        sse.onerror = function (error) {
+            console.error("SSE error:", error);
+            sse.close();
+        };
+        return () => {
+            sse.close();
+        };
+    }, [sessionUUID]);
+
     const handleQuizClick = async () => {
         if (!sessionUUID) return;
         setLoadingQuiz(true);
