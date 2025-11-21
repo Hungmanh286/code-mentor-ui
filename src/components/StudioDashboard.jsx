@@ -216,7 +216,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
     const tools = [
         { title: "Bản đồ tư duy", color: "mindmap", onClick: () => { } },
-        { title: "File câu hỏi", color: "flashcard", onClick: () => { } },
+        { title: "Tóm tắt văn bản", color: "flashcard", onClick: () => { } },
         { title: "Bài kiểm tra", color: "quiz", onClick: handleQuizClick },
     ];
 

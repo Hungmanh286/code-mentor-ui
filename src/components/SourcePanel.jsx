@@ -22,6 +22,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     const [zoomLevel, setZoomLevel] = useState(100);
     const [croppedAreas, setCroppedAreas] = useState([]);
     const canvasRef = useRef(null);
+    const isInitialLoad = useRef(true); // Track if this is the first load (page reload)
 
     // Thông báo lên App khi trạng thái thu gọn thay đổi
     useEffect(() => {
@@ -60,17 +61,25 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                 const data = await response.json();
                 console.log("Session files response data:", data);
 
-                let prevChecked = {};
-                sources.forEach(s => { prevChecked[s.id] = s.checked; });
-
                 // Handle new API format: array of {file_id, file_name}
+                // Always set checked to false on fetch (clean state on reload)
                 if (Array.isArray(data)) {
                     const filesData = data.map(file => ({
                         name: file.file_name || `File ${file.file_id.substring(0, 8)}...`,
                         id: file.file_id,
-                        checked: typeof prevChecked[file.file_id] !== 'undefined' ? prevChecked[file.file_id] : false
+                        checked: false // Always start unchecked
                     }));
                     setSources(filesData);
+
+                    // On initial load (page reload), reset all files to inactive in backend
+                    if (isInitialLoad.current && filesData.length > 0) {
+                        console.log('Page reloaded - resetting all files to inactive in backend');
+                        isInitialLoad.current = false;
+                        // Reset all files to inactive
+                        for (const file of filesData) {
+                            await updateFileActiveStatus(file.id, false);
+                        }
+                    }
                 } else {
                     setSources([]);
                 }
