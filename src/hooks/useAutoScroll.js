@@ -9,9 +9,13 @@ function useAutoScroll(active) {
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(() => {
-      const { scrollHeight, clientHeight, scrollTop } = document.documentElement;
+      // Tìm scroll container thực sự (container có overflow-y-scroll)
+      const scrollContainer = document.getElementById('chatbot-messages-container');
+      if (!scrollContainer) return;
+
+      const { scrollHeight, clientHeight, scrollTop } = scrollContainer;
       if (!isDisabled.current && scrollHeight - clientHeight > scrollTop) {
-        document.documentElement.scrollTo({
+        scrollContainer.scrollTo({
           top: scrollHeight - clientHeight,
           behavior: 'smooth'
         });
@@ -31,11 +35,14 @@ function useAutoScroll(active) {
       return;
     }
 
+    const scrollContainer = document.getElementById('chatbot-messages-container');
+    if (!scrollContainer) return;
+
     function onScroll() {
-      const { scrollHeight, clientHeight, scrollTop } = document.documentElement;
+      const { scrollHeight, clientHeight, scrollTop } = scrollContainer;
       if (
         !isDisabled.current &&
-        window.scrollY < prevScrollTop.current &&
+        scrollTop < prevScrollTop.current &&
         scrollHeight - clientHeight > scrollTop + SCROLL_THRESHOLD
       ) {
         isDisabled.current = true;
@@ -45,14 +52,14 @@ function useAutoScroll(active) {
       ) {
         isDisabled.current = false;
       }
-      prevScrollTop.current = window.scrollY;
+      prevScrollTop.current = scrollTop;
     }
     
     isDisabled.current = false;
-    prevScrollTop.current = document.documentElement.scrollTop;
-    window.addEventListener('scroll', onScroll);
+    prevScrollTop.current = scrollContainer.scrollTop;
+    scrollContainer.addEventListener('scroll', onScroll);
 
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => scrollContainer.removeEventListener('scroll', onScroll);
   }, [active]);
 
   return scrollContentRef;

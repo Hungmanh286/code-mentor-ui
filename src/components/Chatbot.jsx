@@ -13,6 +13,7 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
   const [messages, setMessages] = useImmer([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [selectedTools, setSelectedTools] = useState([]);
 
   // Use provided sessionId if available
   const { response, nextQuestions, error, errorCode, isOpen, isLoading, userInfo, sessionUUID, sendMessage, setError } = useWebSocket(sessionId);
@@ -139,6 +140,24 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
     }
   }
 
+  function handleToolSelect(tool) {
+    console.log("Tool selected:", tool);
+    
+    // Chỉ thêm tool vào danh sách hiển thị, không gửi message
+    if (!selectedTools.find(t => t.id === tool)) {
+      const toolInfo = {
+        id: tool,
+        name: tool === 'generate-questions' ? 'Sinh câu hỏi' : 'Mindmap',
+        icon: tool === 'generate-questions' ? '💡' : '🗺️'
+      };
+      setSelectedTools([...selectedTools, toolInfo]);
+    }
+  }
+
+  function handleRemoveTool(toolId) {
+    setSelectedTools(selectedTools.filter(t => t.id !== toolId));
+  }
+
   // For displaying, prioritize the sessionId from URL over the generated sessionUUID
   const displayUUID = sessionId || sessionUUID;
 
@@ -189,6 +208,9 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
           isLoading={isLoading}
           setNewMessage={setNewMessage}
           submitNewMessage={submitNewMessage}
+          onToolSelect={handleToolSelect}
+          selectedTools={selectedTools}
+          onRemoveTool={handleRemoveTool}
         />
       </div>
     </div>

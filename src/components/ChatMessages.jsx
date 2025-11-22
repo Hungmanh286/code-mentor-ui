@@ -34,7 +34,66 @@ function ChatMessages({ messages, isLoading, setNewMessage }) {
 
   const renderContent = (role, content, nextQuestions) => {
     if (isLoading && !content) {
-      return <Spinner />;
+      return (
+        <div className="flex items-center gap-3">
+          <style>
+            {`
+              @keyframes bounce-gentle {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-8px); }
+              }
+              @keyframes dot-bounce {
+                0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+                40% { transform: translateY(-8px); opacity: 1; }
+              }
+              @keyframes shimmer {
+                0% { background-position: -200% center; }
+                100% { background-position: 200% center; }
+              }
+              .thinking-emoji {
+                animation: bounce-gentle 1.4s ease-in-out infinite;
+                display: inline-block;
+                font-size: 1.5rem;
+              }
+              .thinking-text {
+                background: linear-gradient(
+                  90deg,
+                  #6b7280 25%,
+                  #3b82f6 50%,
+                  #6b7280 75%
+                );
+                background-size: 200% auto;
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                animation: shimmer 2s linear infinite;
+                font-weight: 500;
+                font-size: 0.95rem;
+              }
+              .dot {
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background-color: #3b82f6;
+                margin: 0 2px;
+                animation: dot-bounce 1.4s infinite ease-in-out;
+              }
+              .dot:nth-child(1) { animation-delay: 0s; }
+              .dot:nth-child(2) { animation-delay: 0.2s; }
+              .dot:nth-child(3) { animation-delay: 0.4s; }
+            `}
+          </style>
+          <div className="flex items-center gap-2">
+            <span className="thinking-text">I am thinking</span>
+            <div className="flex items-center gap-0">
+              <span className="dot"></span>
+              <span className="dot"></span>
+              <span className="dot"></span>
+            </div>
+          </div>
+        </div>
+      );
     }
     if (role === 'bot') {
       return (

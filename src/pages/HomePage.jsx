@@ -8,6 +8,8 @@ function HomePage() {
     const [sessions, setSessions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [showNameDialog, setShowNameDialog] = useState(false);
+    const [sessionName, setSessionName] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -32,9 +34,21 @@ function HomePage() {
         }
     };
 
+    const openCreateSessionDialog = () => {
+        setShowNameDialog(true);
+        setSessionName('');
+    };
+
     const createNewSession = async () => {
+        if (!sessionName.trim()) {
+            alert('Vui lòng nhập tên session!');
+            return;
+        }
+
         try {
             setIsLoading(true);
+            setShowNameDialog(false);
+
             // Generate a random UUID for the new session
             const randomSessionId = Math.random().toString(36).substring(2, 15) +
                 Math.random().toString(36).substring(2, 15);
@@ -42,6 +56,7 @@ function HomePage() {
             // Create FormData for the request
             const formData = new FormData();
             formData.append('session_id', randomSessionId);
+            formData.append('session_name', sessionName.trim());
 
             // Call the create-session endpoint
             const response = await fetch('http://0.0.0.0:8686/create-session', {
@@ -62,11 +77,12 @@ function HomePage() {
         }
     };
 
-    const deleteSession = async (sessionId, e) => {
+    const deleteSession = async (sessionId, sessionName, e) => {
         e.preventDefault(); // Ngăn navigation khi click delete
         e.stopPropagation();
 
-        if (!confirm(`Are you sure you want to delete session ${sessionId.substring(0, 8)}...?`)) {
+        const displayName = sessionName || sessionId.substring(0, 8) + '...';
+        if (!confirm(`Bạn có chắc muốn xóa session "${displayName}"?`)) {
             return;
         }
 
@@ -119,7 +135,7 @@ function HomePage() {
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-semibold text-gray-800">Your Sessions</h2>
                         <button
-                            onClick={createNewSession}
+                            onClick={openCreateSessionDialog}
                             className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                             disabled={isLoading}
                         >
@@ -144,7 +160,7 @@ function HomePage() {
                         <div className="bg-white rounded-lg shadow-md p-6 text-center">
                             <p className="text-gray-600 mb-4">You don't have any sessions yet.</p>
                             <button
-                                onClick={createNewSession}
+                                onClick={openCreateSessionDialog}
                                 className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                             >
                                 Start Your First Session
@@ -155,7 +171,7 @@ function HomePage() {
                             {/* New Session Card */}
                             <div
                                 className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200 shadow-sm p-5 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center justify-center h-48"
-                                onClick={createNewSession}
+                                onClick={openCreateSessionDialog}
                             >
                                 <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -167,38 +183,45 @@ function HomePage() {
                             </div>
 
                             {/* Existing Session Cards */}
-                            {sessions.map((session, index) => (
-                                <Link
-                                    key={index}
-                                    to={`/session/${session}`}
-                                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
-                                    onClick={(e) => {
-                                        // Ensure the session ID is properly passed in the URL
-                                        e.preventDefault();
-                                        navigate(`/session/${session}`);
-                                    }}
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="text-lg font-medium text-gray-800">Session {session.substring(0, 8)}...</h3>
-                                            <p className="text-sm text-gray-500 mt-1">Continue your learning</p>
-                                        </div>
-                                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Active</span>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm text-gray-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Last active: Recently
-                                    </div>
-                                    <button
-                                        onClick={(e) => deleteSession(session, e)}
-                                        className="mt-2 px-2 py-1 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
+                            {sessions.map((session, index) => {
+                                // Support both string (session_id) and object {session_id, session_name}
+                                const sessionId = typeof session === 'string' ? session : session.session_id;
+                                const sessionName = typeof session === 'object' ? session.session_name : null;
+                                const displayName = sessionName || `Session ${sessionId.substring(0, 8)}...`;
+                                
+                                return (
+                                    <Link
+                                        key={index}
+                                        to={`/session/${sessionId}`}
+                                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+                                        onClick={(e) => {
+                                            // Ensure the session ID is properly passed in the URL
+                                            e.preventDefault();
+                                            navigate(`/session/${sessionId}`);
+                                        }}
                                     >
-                                        Delete
-                                    </button>
-                                </Link>
-                            ))}
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="text-lg font-medium text-gray-800 truncate">{displayName}</h3>
+                                                <p className="text-sm text-gray-500 mt-1">Tiếp tục học tập</p>
+                                            </div>
+                                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full whitespace-nowrap ml-2">Active</span>
+                                        </div>
+                                        <div className="mt-4 flex items-center text-sm text-gray-600">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Hoạt động gần đây
+                                        </div>
+                                        <button
+                                            onClick={(e) => deleteSession(sessionId, sessionName, e)}
+                                            className="mt-2 px-2 py-1 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
+                                        >
+                                            Xóa
+                                        </button>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     )}
 
@@ -342,6 +365,48 @@ function HomePage() {
                     </div>
                 </div>
             </main>
+
+            {/* Create Session Dialog */}
+            {showNameDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-96 max-w-md shadow-xl">
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Tạo Session Mới</h3>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Tên Session
+                            </label>
+                            <input
+                                type="text"
+                                value={sessionName}
+                                onChange={(e) => setSessionName(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        createNewSession();
+                                    }
+                                }}
+                                placeholder="Nhập tên session..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowNameDialog(false)}
+                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                onClick={createNewSession}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                disabled={!sessionName.trim()}
+                            >
+                                Tạo Session
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Footer */}
             <footer className="w-full bg-white border-t border-gray-200 py-4 mt-auto">
