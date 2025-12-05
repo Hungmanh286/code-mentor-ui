@@ -13,6 +13,9 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
     const [showingResults, setShowingResults] = useState({});
     const [quizScore, setQuizScore] = useState(null);
     const [showScoreModal, setShowScoreModal] = useState(false);
+    const [mindmapImage, setMindmapImage] = useState(null);
+    const [showMindmap, setShowMindmap] = useState(false);
+    const [loadingMindmap, setLoadingMindmap] = useState(false);
 
     // Thông báo lên App khi trạng thái thu gọn thay đổi
     useEffect(() => {
@@ -40,47 +43,102 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
     useEffect(() => {
         if (!sessionUUID) return;
-        const sse = new EventSource(`http://localhost:8686/sse/notify?session_id=${sessionUUID}`);
+
+        console.log(`[SSE] 🔌 Connecting to SSE for session: ${sessionUUID}`);
+        const sse = new EventSource(`http://0.0.0.0:8686/sse/notify?session_id=${sessionUUID}`);
+
         sse.onopen = function () {
-            console.log("SSE connected!");
+            console.log(`[SSE] Connected successfully for session: ${sessionUUID}`);
         };
+
         sse.onmessage = function (event) {
-            if (event.data === "done") {
-                console.log("Server đã xử lý xong, gọi API GET để lấy dữ liệu mới!");
-                fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`)
+            console.log(`[SSE] Raw event received:`, {
+                data: event.data,
+                type: typeof event.data,
+                session: sessionUUID
+            });
+
+            // Parse event data nếu là JSON
+            let eventData;
+            try {
+                eventData = JSON.parse(event.data);
+            } catch (e) {
+                eventData = { type: event.data };
+            }
+
+            // Xử lý event "mindmap_done"
+            if (eventData.type === "mindmap_done") {
+                console.log(`[SSE] 🗺️ 'mindmap_done' event received! Auto-loading mindmap...`);
+
+                fetch(`http://0.0.0.0:8686/get-mindmap?session_id=${sessionUUID}`)
                     .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error("[SSE] Error loading mindmap:", data.error);
+                        } else {
+                            console.log("[SSE] Mindmap loaded successfully!");
+                            setMindmapImage(data.image_base64);
+                            setShowMindmap(true);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("[SSE] Error fetching mindmap:", err);
+                    });
+            }
+            // Xử lý event "done" (sinh câu hỏi xong)
+            else if (event.data === "done" || eventData.type === "done") {
+                console.log(`[SSE] ✨ 'done' event matched! Fetching projects for session: ${sessionUUID}`);
+                fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`)
+                    .then(res => {
+                        console.log(`[SSE]  Fetch response status:`, res.status);
+                        return res.json();
+                    })
                     .then(async data => {
+                        console.log(`[SSE] 📦 Projects data received:`, data);
                         const newProjects = data.projects || [];
                         setProjects(newProjects);
+                        console.log(`[SSE]  Projects updated, count: ${newProjects.length}`);
 
                         // Tự động chọn project mới nhất
                         if (newProjects.length > 0) {
                             const latestProject = newProjects[newProjects.length - 1];
                             const projectId = latestProject.id;
+                            console.log(`[SSE]  Auto-selecting latest project: ${projectId}`);
 
                             setLoadingQuestions(true);
                             setSelectedProject(projectId);
                             try {
                                 const response = await fetch(`http://0.0.0.0:8686/project-questions/${projectId}`);
                                 const qData = await response.json();
+                                console.log(`[SSE] Questions loaded for project ${projectId}:`, qData.questions?.length || 0);
                                 setQuestions(qData.questions || []);
                                 setCurrentQuestionIndex(0);
                             } catch (error) {
-                                console.error("Error fetching questions:", error);
+                                console.error("[SSE] Error fetching questions:", error);
                                 setQuestions([]);
                             } finally {
                                 setLoadingQuestions(false);
                             }
+                        } else {
+                            console.log(`[SSE]  No projects found to auto-select`);
                         }
                     })
-                    .catch(() => setProjects([]));
+                    .catch(err => {
+                        console.error(`[SSE]  Error fetching projects:`, err);
+                        setProjects([]);
+                    });
+            } else {
+                console.log(`[SSE]  Event data is NOT recognized, ignoring. Data:`, eventData);
             }
         };
+
         sse.onerror = function (error) {
-            console.error("SSE error:", error);
+            console.error(`[SSE]  Connection error for session ${sessionUUID}:`, error);
             sse.close();
         };
+
         return () => {
+            console.log(`[SSE] 🔌 Closing SSE connection for session: ${sessionUUID}`);
             sse.close();
         };
     }, [sessionUUID]);
@@ -214,9 +272,35 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
         setShowScoreModal(true);
     };
 
+    const handleMindmapClick = async () => {
+        if (!sessionUUID) return;
+
+        setLoadingMindmap(true);
+        try {
+            const response = await fetch(`http://0.0.0.0:8686/get-mindmap?session_id=${sessionUUID}`);
+            const data = await response.json();
+
+            if (data.error) {
+                alert(data.error);
+            } else {
+                setMindmapImage(data.image_base64);
+                setShowMindmap(true);
+            }
+        } catch (error) {
+            console.error("Error fetching mindmap:", error);
+            alert("Không thể tải mind map");
+        } finally {
+            setLoadingMindmap(false);
+        }
+    };
+
+    const closeMindmap = () => {
+        setShowMindmap(false);
+        setMindmapImage(null);
+    };
+
     const tools = [
-        { title: "Bản đồ tư duy", color: "mindmap", onClick: () => { } },
-        { title: "Tóm tắt văn bản", color: "flashcard", onClick: () => { } },
+        { title: "Bản đồ tư duy", color: "mindmap", onClick: handleMindmapClick },
         { title: "Bài kiểm tra", color: "quiz", onClick: handleQuizClick },
     ];
 
@@ -252,13 +336,13 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                         {tools.map((item, index) => (
                             <div
                                 key={index}
-                                className={`studio-card ${item.color} ${item.color === 'quiz' && !sessionUUID ? 'disabled' : ''}`}
-                                onClick={item.color === 'quiz' ? (sessionUUID ? item.onClick : null) : item.onClick}
-                                style={item.color === 'quiz' && !sessionUUID ? { opacity: 0.6, cursor: 'not-allowed' } : { cursor: 'pointer' }}
+                                className={`studio-card ${item.color} ${!sessionUUID ? 'disabled' : ''}`}
+                                onClick={sessionUUID ? item.onClick : null}
+                                style={!sessionUUID ? { opacity: 0.6, cursor: 'not-allowed' } : { cursor: 'pointer' }}
                             >
                                 <span>{item.title}</span>
                                 <button className="edit-btn">✏️</button>
-                                {item.color === 'quiz' && !sessionUUID && (
+                                {!sessionUUID && (
                                     <div style={{ fontSize: '0.6rem', color: '#ff6b6b', marginTop: '2px' }}>
                                         Chờ session
                                     </div>
@@ -270,6 +354,12 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                     {loadingQuiz && (
                         <div style={{ margin: '16px 0', textAlign: 'center', color: '#1890ff', fontWeight: 500 }}>
                             Đang xử lý bài kiểm tra...
+                        </div>
+                    )}
+
+                    {loadingMindmap && (
+                        <div style={{ margin: '16px 0', textAlign: 'center', color: '#52c41a', fontWeight: 500 }}>
+                            Đang tải mind map...
                         </div>
                     )}
 
@@ -444,6 +534,65 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                                     )}
                                 </>
                             )}
+                        </div>
+                    )}
+
+                    {showMindmap && mindmapImage && (
+                        <div style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 1000,
+                            padding: '20px'
+                        }}>
+                            <div style={{
+                                backgroundColor: 'white',
+                                padding: '20px',
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                maxWidth: '90%',
+                                maxHeight: '90%',
+                                overflow: 'auto',
+                                position: 'relative'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '15px'
+                                }}>
+                                    <h3 style={{ margin: 0, color: '#1890ff' }}>Bản đồ tư duy</h3>
+                                    <button
+                                        onClick={closeMindmap}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            fontSize: '24px',
+                                            cursor: 'pointer',
+                                            color: '#999'
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <img
+                                    src={`data:image/png;base64,${mindmapImage}`}
+                                    alt="Mind Map"
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: '70vh',
+                                        objectFit: 'contain',
+                                        display: 'block',
+                                        margin: '0 auto'
+                                    }}
+                                />
+                            </div>
                         </div>
                     )}
 

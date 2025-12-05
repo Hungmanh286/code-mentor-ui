@@ -1,0 +1,213 @@
+<mxfile host="app.diagrams.net" modified="2025-12-01T10:00:00.000Z" agent="draw.io" version="22.1.11">
+  <diagram name="Learning System Management" id="learning-system-mindmap">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Central Node -->
+        <mxCell id="root" value="Learning System&#xa;Management" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="400" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Main Branch 1: System Administration -->
+        <mxCell id="admin" value="System&#xa;Administration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="300" y="150" width="160" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="admin-user" value="User Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="80" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="admin-perm" value="Permission Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="140" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="admin-log" value="System Log Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="200" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Main Branch 2: Document Management -->
+        <mxCell id="doc" value="Document&#xa;Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1100" y="150" width="160" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="doc-upload" value="Upload PDF" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1340" y="80" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="doc-extract" value="Extract Document Content" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1340" y="140" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="doc-store" value="Store and Manage&#xa;Document List" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1340" y="200" width="140" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Main Branch 3: Question Generation -->
+        <mxCell id="qgen" value="Question Generation&#xa;from Documents" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="550" width="180" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qgen-config" value="Configure Question&#xa;Quantity and Difficulty" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="40" y="680" width="140" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qgen-auto" value="Auto-generate Questions&#xa;and Evaluate Quality" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="220" y="680" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Main Branch 4: Question Answering -->
+        <mxCell id="qa" value="Document-based&#xa;Question Answering" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1050" y="550" width="180" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa-select" value="Select Document Region" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1280" y="660" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa-input" value="Input Questions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1280" y="720" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa-answer" value="Provide Answers and&#xa;Detailed Explanations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1280" y="780" width="140" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Main Branch 5: Learning Progress -->
+        <mxCell id="progress" value="Learning Progress&#xa;Management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="750" width="180" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="progress-history" value="Store History of&#xa;Answered Questions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="420" y="900" width="130" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="progress-scores" value="Store Scores&#xa;and Results" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="570" y="900" width="130" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="progress-materials" value="Track Learning&#xa;Materials and Status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="720" y="900" width="130" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="progress-time" value="Store Study Time&#xa;and Days of Study" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="870" y="900" width="130" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Main Branch 6: Mind Map -->
+        <mxCell id="mindmap" value="Mind Map&#xa;Creation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="850" y="300" width="160" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mindmap-analyze" value="Analyze Document and&#xa;Extract Key Ideas" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="280" width="150" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mindmap-gen" value="Auto-generate Mind Map&#xa;as Image" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="1100" y="350" width="150" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Connections from Root to Main Branches -->
+        <mxCell id="c-admin" value="" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="root" target="admin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-doc" value="" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="root" target="doc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-qgen" value="" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="root" target="qgen">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-qa" value="" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="root" target="qa">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-progress" value="" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="root" target="progress">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-mindmap" value="" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="root" target="mindmap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sub-connections: Admin -->
+        <mxCell id="c-admin-user" value="" style="endArrow=classic;html=1;strokeColor=#b85450;strokeWidth=1.5;" edge="1" parent="1" source="admin" target="admin-user">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-admin-perm" value="" style="endArrow=classic;html=1;strokeColor=#b85450;strokeWidth=1.5;" edge="1" parent="1" source="admin" target="admin-perm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-admin-log" value="" style="endArrow=classic;html=1;strokeColor=#b85450;strokeWidth=1.5;" edge="1" parent="1" source="admin" target="admin-log">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sub-connections: Document -->
+        <mxCell id="c-doc-upload" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="1" source="doc" target="doc-upload">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-doc-extract" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="1" source="doc" target="doc-extract">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-doc-store" value="" style="endArrow=classic;html=1;strokeColor=#82b366;strokeWidth=1.5;" edge="1" parent="1" source="doc" target="doc-store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sub-connections: Question Generation -->
+        <mxCell id="c-qgen-config" value="" style="endArrow=classic;html=1;strokeColor=#9673a6;strokeWidth=1.5;" edge="1" parent="1" source="qgen" target="qgen-config">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-qgen-auto" value="" style="endArrow=classic;html=1;strokeColor=#9673a6;strokeWidth=1.5;" edge="1" parent="1" source="qgen" target="qgen-auto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sub-connections: Question Answering -->
+        <mxCell id="c-qa-select" value="" style="endArrow=classic;html=1;strokeColor=#d79b00;strokeWidth=1.5;" edge="1" parent="1" source="qa" target="qa-select">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-qa-input" value="" style="endArrow=classic;html=1;strokeColor=#d79b00;strokeWidth=1.5;" edge="1" parent="1" source="qa" target="qa-input">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-qa-answer" value="" style="endArrow=classic;html=1;strokeColor=#d79b00;strokeWidth=1.5;" edge="1" parent="1" source="qa" target="qa-answer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sub-connections: Learning Progress -->
+        <mxCell id="c-progress-history" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=1.5;" edge="1" parent="1" source="progress" target="progress-history">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-progress-scores" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=1.5;" edge="1" parent="1" source="progress" target="progress-scores">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-progress-materials" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=1.5;" edge="1" parent="1" source="progress" target="progress-materials">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-progress-time" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=1.5;" edge="1" parent="1" source="progress" target="progress-time">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Sub-connections: Mind Map -->
+        <mxCell id="c-mindmap-analyze" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;" edge="1" parent="1" source="mindmap" target="mindmap-analyze">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="c-mindmap-gen" value="" style="endArrow=classic;html=1;strokeColor=#6c8ebf;strokeWidth=1.5;" edge="1" parent="1" source="mindmap" target="mindmap-gen">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

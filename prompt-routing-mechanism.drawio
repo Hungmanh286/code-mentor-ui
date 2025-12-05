@@ -1,0 +1,244 @@
+<mxfile host="app.diagrams.net" modified="2025-12-01T08:18:22.000Z" agent="draw.io" version="22.1.11">
+  <diagram name="Prompt Routing Mechanism" id="prompt-routing">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="Prompt Routing Mechanism&#xa;for Multi-Module Learning System" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="20" width="800" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- USER -->
+        <mxCell id="user" value="User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="80" y="120" width="50" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Frontend / Chat UI -->
+        <mxCell id="ui" value="Frontend / Chat UI" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="130" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ROUTER -->
+        <mxCell id="router" value="ROUTER&#xa;(Prompt Classifier + Intent Detector)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#000000;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="440" y="100" width="260" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Classify Intent (self-loop note inside router) -->
+        <mxCell id="classify-note" value="Classify Intent&#xa;• Ask Question&#xa;• Summarize&#xa;• Create Mind Map&#xa;• Generate MCQ&#xa;• Others" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;fillColor=#ffffcc;strokeColor=#999999;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="750" y="100" width="180" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- EVENT BUS -->
+        <mxCell id="bus-box" value="Event Bus&#xa;(Kafka / Redis Streams)" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8f7;strokeColor=#6AA8FF;fontStyle=1;fontSize=14;startSize=60;" vertex="1" parent="1">
+          <mxGeometry x="400" y="320" width="340" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="bus" value="EVENT BUS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DDF0FF;strokeColor=#6AA8FF;fontSize=14;fontStyle=1" vertex="1" parent="bus-box">
+          <mxGeometry x="70" y="70" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- MODULES SECTION -->
+        
+        <!-- Question Answering Module -->
+        <mxCell id="qa-module" value="Question Answering&#xa;(QA Module)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#CCE5FF;strokeColor=#000000;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="560" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Summarization Module -->
+        <mxCell id="sum-module" value="Summarization&#xa;Module" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFEECC;strokeColor=#000000;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="340" y="560" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Mind Map Module -->
+        <mxCell id="mm-module" value="Mind Map Module&#xa;(Summarization + Concept Hierarchy)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFDD;strokeColor=#000000;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="560" y="560" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Question Generation Module -->
+        <mxCell id="qg-module" value="Question Generation&#xa;(QG Module – MCQ)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E8D8FF;strokeColor=#000000;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="560" width="220" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Utility Module -->
+        <mxCell id="util-module" value="Utility Module&#xa;(e.g., Document Tools)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#DDDDDD;strokeColor=#000000;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1120" y="560" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- ARROWS / FLOWS -->
+
+        <!-- User -> UI -->
+        <mxCell id="a1" value="Enter Prompt" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="user" target="ui">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- UI -> Router -->
+        <mxCell id="a2" value="Send Prompt" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="ui" target="router">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Router -> Classify Note (visual connection) -->
+        <mxCell id="a3" value="" style="endArrow=none;dashed=1;html=1;strokeColor=#999999;strokeWidth=1;" edge="1" parent="1" source="router" target="classify-note">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Router -> BUS -->
+        <mxCell id="a4" value="Emit RoutedEvent&#xa;(with intent + metadata)" style="endArrow=classic;html=1;strokeColor=#000000;strokeWidth=2;" edge="1" parent="1" source="router" target="bus">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="240" as="sourcePoint" />
+            <mxPoint x="570" y="320" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ROUTING RULES: BUS -> Modules -->
+
+        <!-- BUS -> QA Module -->
+        <mxCell id="r1" value="If intent == &quot;answer_question&quot;" style="endArrow=classic;html=1;strokeColor=#0066CC;strokeWidth=2;" edge="1" parent="1" source="bus" target="qa-module">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="460" as="sourcePoint" />
+            <mxPoint x="200" y="560" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="200" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BUS -> Summarization Module -->
+        <mxCell id="r2" value="If intent == &quot;summarize&quot;" style="endArrow=classic;html=1;strokeColor=#0066CC;strokeWidth=2;" edge="1" parent="1" source="bus" target="sum-module">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="460" as="sourcePoint" />
+            <mxPoint x="430" y="560" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="430" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BUS -> Mind Map Module -->
+        <mxCell id="r3" value="If intent == &quot;mind_map&quot;" style="endArrow=classic;html=1;strokeColor=#0066CC;strokeWidth=2;" edge="1" parent="1" source="bus" target="mm-module">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="460" as="sourcePoint" />
+            <mxPoint x="690" y="560" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="690" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BUS -> Question Generation Module -->
+        <mxCell id="r4" value="If intent == &quot;generate_questions&quot;" style="endArrow=classic;html=1;strokeColor=#0066CC;strokeWidth=2;" edge="1" parent="1" source="bus" target="qg-module">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="640" y="460" as="sourcePoint" />
+            <mxPoint x="970" y="560" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="970" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BUS -> Utility Module -->
+        <mxCell id="r5" value="If intent == &quot;other&quot;" style="endArrow=classic;html=1;strokeColor=#0066CC;strokeWidth=2;" edge="1" parent="1" source="bus" target="util-module">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="700" y="460" as="sourcePoint" />
+            <mxPoint x="1220" y="560" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1220" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- RETURN FLOW: Modules -> BUS -->
+
+        <!-- QA Module -> BUS -->
+        <mxCell id="b1" value="QA_Result" style="endArrow=classic;html=1;strokeColor=#009900;strokeWidth=2;dashed=1;" edge="1" parent="1" source="qa-module" target="bus">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="640" as="sourcePoint" />
+            <mxPoint x="400" y="480" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="200" y="720" />
+              <mxPoint x="380" y="720" />
+              <mxPoint x="380" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Summarization Module -> BUS -->
+        <mxCell id="b2" value="Summary_Result" style="endArrow=classic;html=1;strokeColor=#009900;strokeWidth=2;dashed=1;" edge="1" parent="1" source="sum-module" target="bus">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="430" y="640" as="sourcePoint" />
+            <mxPoint x="450" y="480" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="430" y="700" />
+              <mxPoint x="430" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Mind Map Module -> BUS -->
+        <mxCell id="b3" value="MindMap_Result" style="endArrow=classic;html=1;strokeColor=#009900;strokeWidth=2;dashed=1;" edge="1" parent="1" source="mm-module" target="bus">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="690" y="640" as="sourcePoint" />
+            <mxPoint x="570" y="480" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="690" y="690" />
+              <mxPoint x="540" y="690" />
+              <mxPoint x="540" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Question Generation Module -> BUS -->
+        <mxCell id="b4" value="MCQ_Result" style="endArrow=classic;html=1;strokeColor=#009900;strokeWidth=2;dashed=1;" edge="1" parent="1" source="qg-module" target="bus">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="970" y="640" as="sourcePoint" />
+            <mxPoint x="640" y="480" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="970" y="710" />
+              <mxPoint x="620" y="710" />
+              <mxPoint x="620" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Utility Module -> BUS -->
+        <mxCell id="b5" value="Utility_Result" style="endArrow=classic;html=1;strokeColor=#009900;strokeWidth=2;dashed=1;" edge="1" parent="1" source="util-module" target="bus">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1220" y="640" as="sourcePoint" />
+            <mxPoint x="720" y="480" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1220" y="730" />
+              <mxPoint x="760" y="730" />
+              <mxPoint x="760" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- BUS -> UI (Response) -->
+        <mxCell id="a5" value="Send Response" style="endArrow=classic;html=1;strokeColor=#FF6600;strokeWidth=2;" edge="1" parent="1" source="bus" target="ui">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="390" as="sourcePoint" />
+            <mxPoint x="360" y="210" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="360" y="390" />
+              <mxPoint x="360" y="280" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- UI -> User (Display Result) -->
+        <mxCell id="a6" value="Display Result" style="endArrow=classic;html=1;strokeColor=#FF6600;strokeWidth=2;" edge="1" parent="1" source="ui" target="user">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="190" as="sourcePoint" />
+            <mxPoint x="130" y="190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Legend / Annotations -->
+        <mxCell id="legend" value="Legend:&#xa;• Blue arrows = Routing to modules&#xa;• Green dashed = Results back to bus&#xa;• Orange arrows = Response to user" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="100" width="280" height="100" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Flame, TrendingUp, Calendar, Target, Trophy, Star } from 'lucide-react';
+import { Flame, TrendingUp, Calendar, Target, Trophy, Star, LogOut } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 function HomePage() {
     const [sessions, setSessions] = useState([]);
@@ -11,24 +12,44 @@ function HomePage() {
     const [showNameDialog, setShowNameDialog] = useState(false);
     const [sessionName, setSessionName] = useState('');
     const navigate = useNavigate();
+    const { user, logout } = useAuth();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
 
     useEffect(() => {
-        fetchSessions();
-    }, []);
+        if (user?.user_id) {
+            fetchSessions();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.user_id]);
 
     const fetchSessions = async () => {
         try {
             setIsLoading(true);
-            const response = await fetch('http://0.0.0.0:8686/sessions');
+            
+            // Lấy user_id từ AuthContext
+            if (!user?.user_id) {
+                console.error('No user_id available');
+                setSessions([]);
+                return;
+            }
+
+            // Gọi API với user_id
+            const response = await fetch(`http://0.0.0.0:8686/user-sessions/${user.user_id}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
 
             const data = await response.json();
+            console.log("User sessions:", data);
             setSessions(data.sessions || []);
         } catch (err) {
-
+            console.error("Error fetching sessions:", err);
+            setSessions([]);
         } finally {
             setIsLoading(false);
         }
@@ -45,6 +66,11 @@ function HomePage() {
             return;
         }
 
+        if (!user?.user_id) {
+            alert('Không tìm thấy thông tin người dùng!');
+            return;
+        }
+
         try {
             setIsLoading(true);
             setShowNameDialog(false);
@@ -57,6 +83,7 @@ function HomePage() {
             const formData = new FormData();
             formData.append('session_id', randomSessionId);
             formData.append('session_name', sessionName.trim());
+            formData.append('user_id', user.user_id); // Thêm user_id
 
             // Call the create-session endpoint
             const response = await fetch('http://0.0.0.0:8686/create-session', {
@@ -86,13 +113,24 @@ function HomePage() {
             return;
         }
 
+        if (!user?.user_id) {
+            alert('Không tìm thấy thông tin người dùng!');
+            return;
+        }
+
         try {
             setIsLoading(true);
-            const response = await fetch(`http://0.0.0.0:8686/sessions/${sessionId}`, {
+            // Gửi user_id như query parameter để verify quyền sở hữu
+            const response = await fetch(`http://0.0.0.0:8686/sessions/${sessionId}?user_id=${user.user_id}`, {
                 method: 'DELETE'
             });
 
             if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('Bạn không có quyền xóa session này!');
+                } else if (response.status === 404) {
+                    throw new Error('Session không tồn tại!');
+                }
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
 
@@ -104,7 +142,7 @@ function HomePage() {
 
         } catch (err) {
             console.error("Failed to delete session:", err);
-            setError("Failed to delete session. Please try again.");
+            setError(err.message || "Failed to delete session. Please try again.");
         } finally {
             setIsLoading(false);
         }
@@ -119,13 +157,28 @@ function HomePage() {
                         <img src="/logo-code.png" className="h-8" alt="logo" />
                         <h1 className="ml-3 text-xl font-bold text-gray-800">Learning Platform</h1>
                     </div>
-                    <button
-                        onClick={() => navigate('/progress')}
-                        className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
-                    >
-                        <Trophy size={18} />
-                        Tiến trình học tập
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/progress')}
+                            className="px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                        >
+                            <Trophy size={18} />
+                            Tiến trình học tập
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <div className="text-right">
+                                <p className="text-sm font-medium text-gray-800">{user?.user_name}</p>
+                                <p className="text-xs text-gray-500">Học viên</p>
+                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Đăng xuất"
+                            >
+                                <LogOut size={20} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </header>
 
