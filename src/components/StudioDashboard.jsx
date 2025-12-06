@@ -16,35 +16,24 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
     const [mindmapImage, setMindmapImage] = useState(null);
     const [showMindmap, setShowMindmap] = useState(false);
     const [loadingMindmap, setLoadingMindmap] = useState(false);
+    const [mindmapList, setMindmapList] = useState([]);
+    const [showMindmapList, setShowMindmapList] = useState(false);
+    const [selectedMindmapId, setSelectedMindmapId] = useState(null);
+    const [showProjectList, setShowProjectList] = useState(false);
 
-    // Thông báo lên App khi trạng thái thu gọn thay đổi
     useEffect(() => {
         if (onCollapsedChange) {
             onCollapsedChange(collapsed);
         }
     }, [collapsed, onCollapsedChange]);
 
-    useEffect(() => {
-        if (!sessionUUID) {
-            setProjects([]);
-            return;
-        }
-        const fetchProjects = async () => {
-            try {
-                const projectsRes = await fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`);
-                const projectsData = await projectsRes.json();
-                setProjects(projectsData.projects || []);
-            } catch (e) {
-                setProjects([]);
-            }
-        };
-        fetchProjects();
-    }, [sessionUUID]);
+    // Không tự động fetch projects khi vào session nữa
+    // Chỉ fetch khi user click vào "Bài kiểm tra"
 
     useEffect(() => {
         if (!sessionUUID) return;
 
-        console.log(`[SSE] 🔌 Connecting to SSE for session: ${sessionUUID}`);
+        console.log(`[SSE] Connecting to SSE for session: ${sessionUUID}`);
         const sse = new EventSource(`http://0.0.0.0:8686/sse/notify?session_id=${sessionUUID}`);
 
         sse.onopen = function () {
@@ -68,17 +57,33 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
             // Xử lý event "mindmap_done"
             if (eventData.type === "mindmap_done") {
-                console.log(`[SSE] 🗺️ 'mindmap_done' event received! Auto-loading mindmap...`);
+                console.log(`[SSE] 🗺️ 'mindmap_done' event received!`, eventData);
 
-                fetch(`http://0.0.0.0:8686/get-mindmap?session_id=${sessionUUID}`)
+                // Lấy mindmap_id từ event hoặc từ danh sách mindmap
+                // Đầu tiên gọi API list để lấy mindmap mới nhất
+                fetch(`http://0.0.0.0:8686/mindmap/list/${sessionUUID}`)
                     .then(res => res.json())
-                    .then(data => {
-                        if (data.error) {
-                            console.error("[SSE] Error loading mindmap:", data.error);
+                    .then(async (mindmapList) => {
+                        console.log("[SSE] Mindmap list received:", mindmapList);
+                        if (mindmapList.length > 0) {
+                            // Lấy mindmap mới nhất (cuối cùng trong list)
+                            const latestMindmap = mindmapList[mindmapList.length - 1];
+                            const mindmapId = latestMindmap.id;
+                            console.log(`[SSE] Auto-loading latest mindmap: ${mindmapId}`);
+
+                            // Gọi API lấy mindmap với ID
+                            const response = await fetch(`http://0.0.0.0:8686/mindmap/mindmap/${mindmapId}?session_id=${sessionUUID}`);
+                            const data = await response.json();
+
+                            if (data.error) {
+                                console.error("[SSE] Error loading mindmap:", data.error);
+                            } else {
+                                console.log("[SSE] Mindmap loaded successfully!");
+                                setMindmapImage(data.image_base64);
+                                setShowMindmap(true);
+                            }
                         } else {
-                            console.log("[SSE] Mindmap loaded successfully!");
-                            setMindmapImage(data.image_base64);
-                            setShowMindmap(true);
+                            console.warn("[SSE] No mindmaps found in list");
                         }
                     })
                     .catch(err => {
@@ -145,24 +150,24 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
     const handleQuizClick = async () => {
         if (!sessionUUID) return;
+
+        // Fetch danh sách project và hiển thị modal
         setLoadingQuiz(true);
         try {
-            const response = await fetch('http://0.0.0.0:8686/process', {
-                method: 'POST',
-                headers: {},
-                body: (() => {
-                    const form = new FormData();
-                    form.append('session_id', sessionUUID);
-                    return form;
-                })(),
-            });
-            await response.json();
-            // Lấy danh sách project sau khi xử lý xong
             const projectsRes = await fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`);
             const projectsData = await projectsRes.json();
-            setProjects(projectsData.projects || []);
+            const projectList = projectsData.projects || [];
+
+            if (projectList.length === 0) {
+                alert("Chưa có project nào cho session này");
+            } else {
+                setProjects(projectList);
+                setShowProjectList(true);
+            }
         } catch (e) {
-            // Xử lý lỗi nếu cần
+            console.error("Error fetching projects:", e);
+            alert("Không thể tải danh sách project");
+            setProjects([]);
         } finally {
             setLoadingQuiz(false);
         }
@@ -171,6 +176,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
     const handleProjectClick = async (projectId) => {
         setLoadingQuestions(true);
         setSelectedProject(projectId);
+        setShowProjectList(false); // Đóng modal danh sách
         try {
             const response = await fetch(`http://0.0.0.0:8686/project-questions/${projectId}`);
             const data = await response.json();
@@ -178,10 +184,15 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
             setCurrentQuestionIndex(0);
         } catch (error) {
             console.error("Error fetching questions:", error);
+            alert("Không thể tải câu hỏi");
             setQuestions([]);
         } finally {
             setLoadingQuestions(false);
         }
+    };
+
+    const closeProjectList = () => {
+        setShowProjectList(false);
     };
 
     const handleNextQuestion = () => {
@@ -277,26 +288,58 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
         setLoadingMindmap(true);
         try {
-            const response = await fetch(`http://0.0.0.0:8686/get-mindmap?session_id=${sessionUUID}`);
+            const response = await fetch(`http://0.0.0.0:8686/mindmap/list/${sessionUUID}`);
             const data = await response.json();
 
             if (data.error) {
                 alert(data.error);
+            } else if (data.length === 0) {
+                alert("Chưa có mind map nào cho session này");
+            } else {
+                setMindmapList(data);
+                setShowMindmapList(true);
+            }
+        } catch (error) {
+            console.error("Error fetching mindmap list:", error);
+            alert("Không thể tải danh sách mind map");
+        } finally {
+            setLoadingMindmap(false);
+        }
+    };
+
+    const handleSelectMindmap = async (mindmapId) => {
+        if (!sessionUUID) return;
+
+        setLoadingMindmap(true);
+        setSelectedMindmapId(mindmapId);
+        setShowMindmapList(false); // Đóng modal danh sách
+        try {
+            const response = await fetch(`http://0.0.0.0:8686/mindmap/mindmap/${mindmapId}?session_id=${sessionUUID}`);
+            const data = await response.json();
+
+            if (data.error) {
+                alert(data.error);
+                setMindmapImage(null);
             } else {
                 setMindmapImage(data.image_base64);
-                setShowMindmap(true);
             }
         } catch (error) {
             console.error("Error fetching mindmap:", error);
             alert("Không thể tải mind map");
+            setMindmapImage(null);
         } finally {
             setLoadingMindmap(false);
         }
     };
 
     const closeMindmap = () => {
-        setShowMindmap(false);
         setMindmapImage(null);
+        setSelectedMindmapId(null);
+    };
+
+    const closeMindmapList = () => {
+        setShowMindmapList(false);
+        setMindmapList([]);
     };
 
     const tools = [
@@ -363,23 +406,94 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                         </div>
                     )}
 
-                    <div className="studio-list">
-                        {projects.length > 0 ? (
-                            projects.map((p, i) => (
-                                <div key={i} className="note-item" onClick={() => handleProjectClick(p.id)} style={{ cursor: 'pointer' }}>
-                                    <div className="note-left">
-                                        <div className="note-icon" style={{ cursor: 'pointer' }}>📁</div>
-                                        <div className="note-text">
-                                            <p className="note-title">{p.name}</p>
-                                            <p className="note-info">ID: {p.id}</p>
-                                        </div>
-                                    </div>
+                    {showProjectList && (
+                        <div style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            zIndex: 1000,
+                            padding: '20px'
+                        }}>
+                            <div style={{
+                                backgroundColor: 'white',
+                                padding: '20px',
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                maxWidth: '600px',
+                                width: '100%',
+                                maxHeight: '80vh',
+                                overflow: 'auto'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '20px'
+                                }}>
+                                    <h3 style={{ margin: 0, color: '#1890ff' }}>Danh sách Project</h3>
+                                    <button
+                                        onClick={closeProjectList}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            fontSize: '24px',
+                                            cursor: 'pointer',
+                                            color: '#999'
+                                        }}
+                                    >
+                                        ×
+                                    </button>
                                 </div>
-                            ))
-                        ) : (
-                            <div style={{ color: '#888', textAlign: 'center', fontSize: '0.9rem' }}>Chưa có project nào</div>
-                        )}
-                    </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {projects.map((p, index) => (
+                                        <div
+                                            key={p.id}
+                                            onClick={() => handleProjectClick(p.id)}
+                                            style={{
+                                                padding: '15px',
+                                                border: '1px solid #e8e8e8',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s',
+                                                backgroundColor: selectedProject === p.id ? '#e6f7ff' : 'white',
+                                                borderColor: selectedProject === p.id ? '#1890ff' : '#e8e8e8'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (selectedProject !== p.id) {
+                                                    e.currentTarget.style.borderColor = '#1890ff';
+                                                    e.currentTarget.style.backgroundColor = '#f0f5ff';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (selectedProject !== p.id) {
+                                                    e.currentTarget.style.borderColor = '#e8e8e8';
+                                                    e.currentTarget.style.backgroundColor = 'white';
+                                                }
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <span style={{ fontSize: '24px' }}>📁</span>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                                                        {p.name || `Project ${index + 1}`}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', color: '#999' }}>
+                                                        ID: {p.id}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {selectedProject && (
                         <div className="questions-container" style={{
@@ -537,14 +651,14 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                         </div>
                     )}
 
-                    {showMindmap && mindmapImage && (
+                    {showMindmapList && (
                         <div style={{
                             position: 'fixed',
                             top: 0,
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            backgroundColor: 'rgba(0,0,0,0.5)',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
@@ -556,20 +670,20 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                                 padding: '20px',
                                 borderRadius: '12px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                maxWidth: '90%',
-                                maxHeight: '90%',
-                                overflow: 'auto',
-                                position: 'relative'
+                                maxWidth: '600px',
+                                width: '100%',
+                                maxHeight: '80vh',
+                                overflow: 'auto'
                             }}>
                                 <div style={{
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
-                                    marginBottom: '15px'
+                                    marginBottom: '20px'
                                 }}>
-                                    <h3 style={{ margin: 0, color: '#1890ff' }}>Bản đồ tư duy</h3>
+                                    <h3 style={{ margin: 0, color: '#1890ff' }}>Danh sách Mind Map</h3>
                                     <button
-                                        onClick={closeMindmap}
+                                        onClick={closeMindmapList}
                                         style={{
                                             background: 'none',
                                             border: 'none',
@@ -581,18 +695,98 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                                         ×
                                     </button>
                                 </div>
-                                <img
-                                    src={`data:image/png;base64,${mindmapImage}`}
-                                    alt="Mind Map"
-                                    style={{
-                                        maxWidth: '100%',
-                                        maxHeight: '70vh',
-                                        objectFit: 'contain',
-                                        display: 'block',
-                                        margin: '0 auto'
-                                    }}
-                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {mindmapList.map((mm, index) => (
+                                        <div
+                                            key={mm.id}
+                                            onClick={() => handleSelectMindmap(mm.id)}
+                                            style={{
+                                                padding: '15px',
+                                                border: '1px solid #e8e8e8',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s',
+                                                backgroundColor: selectedMindmapId === mm.id ? '#e6f7ff' : 'white',
+                                                borderColor: selectedMindmapId === mm.id ? '#1890ff' : '#e8e8e8'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (selectedMindmapId !== mm.id) {
+                                                    e.currentTarget.style.borderColor = '#1890ff';
+                                                    e.currentTarget.style.backgroundColor = '#f0f5ff';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (selectedMindmapId !== mm.id) {
+                                                    e.currentTarget.style.borderColor = '#e8e8e8';
+                                                    e.currentTarget.style.backgroundColor = 'white';
+                                                }
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <span style={{ fontSize: '24px' }}>🗺️</span>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                                                        {mm.name || `Mind Map ${index + 1}`}
+                                                    </div>
+                                                    <div style={{ fontSize: '12px', color: '#999' }}>
+                                                        {new Date(mm.created_at).toLocaleString('vi-VN')}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
+                        </div>
+                    )}
+
+                    {selectedMindmapId && mindmapImage && (
+                        <div className="mindmap-container" style={{
+                            margin: '20px 0',
+                            padding: '15px',
+                            backgroundColor: '#f9f9f9',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                <h4 style={{ margin: 0 }}>Bản đồ tư duy</h4>
+                                <button
+                                    onClick={closeMindmap}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        fontSize: '18px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            {loadingMindmap ? (
+                                <div style={{ textAlign: 'center', padding: '20px' }}>
+                                    Đang tải mind map...
+                                </div>
+                            ) : (
+                                <div style={{
+                                    backgroundColor: 'white',
+                                    padding: '15px',
+                                    borderRadius: '8px',
+                                    overflow: 'auto',
+                                    maxHeight: '70vh'
+                                }}>
+                                    <img
+                                        src={`data:image/png;base64,${mindmapImage}`}
+                                        alt="Mind Map"
+                                        style={{
+                                            maxWidth: '100%',
+                                            height: 'auto',
+                                            display: 'block',
+                                            margin: '0 auto'
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 
