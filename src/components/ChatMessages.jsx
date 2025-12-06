@@ -33,68 +33,6 @@ function ChatMessages({ messages, isLoading, setNewMessage }) {
   }, []);
 
   const renderContent = (role, content, nextQuestions) => {
-    if (isLoading && !content) {
-      return (
-        <div className="flex items-center gap-3">
-          <style>
-            {`
-              @keyframes bounce-gentle {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-8px); }
-              }
-              @keyframes dot-bounce {
-                0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-                40% { transform: translateY(-8px); opacity: 1; }
-              }
-              @keyframes shimmer {
-                0% { background-position: -200% center; }
-                100% { background-position: 200% center; }
-              }
-              .thinking-emoji {
-                animation: bounce-gentle 1.4s ease-in-out infinite;
-                display: inline-block;
-                font-size: 1.5rem;
-              }
-              .thinking-text {
-                background: linear-gradient(
-                  90deg,
-                  #6b7280 25%,
-                  #3b82f6 50%,
-                  #6b7280 75%
-                );
-                background-size: 200% auto;
-                background-clip: text;
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                animation: shimmer 2s linear infinite;
-                font-weight: 500;
-                font-size: 0.95rem;
-              }
-              .dot {
-                display: inline-block;
-                width: 6px;
-                height: 6px;
-                border-radius: 50%;
-                background-color: #3b82f6;
-                margin: 0 2px;
-                animation: dot-bounce 1.4s infinite ease-in-out;
-              }
-              .dot:nth-child(1) { animation-delay: 0s; }
-              .dot:nth-child(2) { animation-delay: 0.2s; }
-              .dot:nth-child(3) { animation-delay: 0.4s; }
-            `}
-          </style>
-          <div className="flex items-center gap-2">
-            <span className="thinking-text">I am thinking</span>
-            <div className="flex items-center gap-0">
-              <span className="dot"></span>
-              <span className="dot"></span>
-              <span className="dot"></span>
-            </div>
-          </div>
-        </div>
-      );
-    }
     if (role === 'bot') {
       return (
         <div>
@@ -130,28 +68,95 @@ function ChatMessages({ messages, isLoading, setNewMessage }) {
 
   return (
     <div ref={scrollContentRef} className='grow space-y-4'>
-      {messages.map(({ role, content, nextQuestions, error, errorCode }, idx) => (
-        <div key={idx} className={`flex items-start gap-4 py-4 px-3 rounded-xl ${role === 'user' ? 'bg-primary-blue/10' : ''}`}>
-          {role === 'user' && (
-            <img
-              className='h-[26px] w-[26px] shrink-0'
-              src={userIcon}
-              alt='user'
-            />
-          )}
-          <div>
-            <div className='markdown-container'>
-              {renderContent(role, content, nextQuestions)}
-            </div>
-            {error && (
-              <div className={`flex items-center gap-1 text-sm text-error-red ${content && 'mt-2'}`}>
-                <img className='h-5 w-5' src={errorIcon} alt='error' />
-                <span>{error}</span>
-              </div>
+      {messages.map(({ role, content, nextQuestions, error, errorCode }, idx) => {
+        // Chỉ hiển thị loading cho tin nhắn cuối cùng
+        const isLastMessage = idx === messages.length - 1;
+        const shouldShowLoading = isLoading && isLastMessage && !content;
+
+        return (
+          <div key={idx} className={`flex items-start gap-4 py-4 px-3 rounded-xl ${role === 'user' ? 'bg-primary-blue/10' : ''}`}>
+            {role === 'user' && (
+              <img
+                className='h-[26px] w-[26px] shrink-0'
+                src={userIcon}
+                alt='user'
+              />
             )}
+            <div>
+              <div className='markdown-container'>
+                {shouldShowLoading ? (
+                  <div className="flex items-center gap-3">
+                    <style>
+                      {`
+                        @keyframes bounce-gentle {
+                          0%, 100% { transform: translateY(0px); }
+                          50% { transform: translateY(-8px); }
+                        }
+                        @keyframes dot-bounce {
+                          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+                          40% { transform: translateY(-8px); opacity: 1; }
+                        }
+                        @keyframes shimmer {
+                          0% { background-position: -200% center; }
+                          100% { background-position: 200% center; }
+                        }
+                        .thinking-emoji {
+                          animation: bounce-gentle 1.4s ease-in-out infinite;
+                          display: inline-block;
+                          font-size: 1.5rem;
+                        }
+                        .thinking-text {
+                          background: linear-gradient(
+                            90deg,
+                            #6b7280 25%,
+                            #3b82f6 50%,
+                            #6b7280 75%
+                          );
+                          background-size: 200% auto;
+                          background-clip: text;
+                          -webkit-background-clip: text;
+                          -webkit-text-fill-color: transparent;
+                          animation: shimmer 2s linear infinite;
+                          font-weight: 500;
+                          font-size: 0.95rem;
+                        }
+                        .dot {
+                          display: inline-block;
+                          width: 6px;
+                          height: 6px;
+                          border-radius: 50%;
+                          background-color: #3b82f6;
+                          margin: 0 2px;
+                          animation: dot-bounce 1.4s infinite ease-in-out;
+                        }
+                        .dot:nth-child(1) { animation-delay: 0s; }
+                        .dot:nth-child(2) { animation-delay: 0.2s; }
+                        .dot:nth-child(3) { animation-delay: 0.4s; }
+                      `}
+                    </style>
+                    <div className="flex items-center gap-2">
+                      <span className="thinking-text">I am thinking</span>
+                      <div className="flex items-center gap-0">
+                        <span className="dot"></span>
+                        <span className="dot"></span>
+                        <span className="dot"></span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  renderContent(role, content, nextQuestions)
+                )}
+              </div>
+              {error && (
+                <div className={`flex items-center gap-1 text-sm text-error-red ${content && 'mt-2'}`}>
+                  <img className='h-5 w-5' src={errorIcon} alt='error' />
+                  <span>{error}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

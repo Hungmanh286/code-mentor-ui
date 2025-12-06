@@ -142,7 +142,7 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
 
   function handleToolSelect(tool) {
     console.log("Tool selected:", tool);
-    
+
     // Chỉ thêm tool vào danh sách hiển thị, không gửi message
     if (!selectedTools.find(t => t.id === tool)) {
       const toolInfo = {

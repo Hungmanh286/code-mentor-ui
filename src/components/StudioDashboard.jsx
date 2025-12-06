@@ -91,7 +91,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                     });
             }
             // Xử lý event "done" (sinh câu hỏi xong)
-            else if (event.data === "done" || eventData.type === "done") {
+            else if (event.data === "question_done" || eventData.type === "document_done" || eventData.type === "question_done") {
                 console.log(`[SSE] ✨ 'done' event matched! Fetching projects for session: ${sessionUUID}`);
                 fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`)
                     .then(res => {

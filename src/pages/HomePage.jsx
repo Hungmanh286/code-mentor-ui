@@ -29,7 +29,7 @@ function HomePage() {
     const fetchSessions = async () => {
         try {
             setIsLoading(true);
-            
+
             // Lấy user_id từ AuthContext
             if (!user?.user_id) {
                 console.error('No user_id available');
@@ -241,7 +241,7 @@ function HomePage() {
                                 const sessionId = typeof session === 'string' ? session : session.session_id;
                                 const sessionName = typeof session === 'object' ? session.session_name : null;
                                 const displayName = sessionName || `Session ${sessionId.substring(0, 8)}...`;
-                                
+
                                 return (
                                     <Link
                                         key={index}
