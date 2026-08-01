@@ -80,6 +80,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                             } else {
                                 console.log("[SSE] Mindmap loaded successfully!");
                                 setMindmapImage(data.image_base64);
+                                setSelectedMindmapId(mindmapId);
                                 setShowMindmap(true);
                             }
                         } else {

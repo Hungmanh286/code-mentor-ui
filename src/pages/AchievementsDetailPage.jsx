@@ -14,7 +14,7 @@ export default function AchievementsDetailPage({ onBack }) {
       icon: Trophy,
       color: 'from-yellow-400 to-yellow-600',
       unlocked: true,
-      unlockedDate: '02/11/2024',
+      unlockedDate: '02/11/2025',
     },
     {
       id: 2,
@@ -23,7 +23,7 @@ export default function AchievementsDetailPage({ onBack }) {
       icon: Star,
       color: 'from-blue-400 to-blue-600',
       unlocked: true,
-      unlockedDate: '28/10/2024',
+      unlockedDate: '28/10/2025',
     },
     {
       id: 3,
@@ -32,7 +32,7 @@ export default function AchievementsDetailPage({ onBack }) {
       icon: Award,
       color: 'from-purple-400 to-purple-600',
       unlocked: true,
-      unlockedDate: '15/10/2024',
+      unlockedDate: '15/10/2025',
     },
     {
       id: 4,
@@ -41,7 +41,7 @@ export default function AchievementsDetailPage({ onBack }) {
       icon: TrendingUp,
       color: 'from-green-400 to-green-600',
       unlocked: true,
-      unlockedDate: '10/10/2024',
+      unlockedDate: '10/10/2025',
     },
     {
       id: 5,
@@ -216,8 +216,8 @@ function AchievementCard({ achievement }) {
   return (
     <Card
       className={`${achievement.unlocked
-          ? 'border-yellow-200 bg-gradient-to-br from-white to-yellow-50'
-          : 'opacity-60'
+        ? 'border-yellow-200 bg-gradient-to-br from-white to-yellow-50'
+        : 'opacity-60'
         }`}
     >
       <CardContent className="pt-6">

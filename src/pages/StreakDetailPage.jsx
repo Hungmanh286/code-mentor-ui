@@ -71,7 +71,7 @@ export default function StreakDetailPage() {
                             </div>
                             <div className="mb-1">21 ngày</div>
                             <p className="text-gray-500 text-sm">
-                                Đạt được vào tháng 9/2024
+                                Đạt được vào tháng 9/2025
                             </p>
                         </CardContent>
                     </Card>
