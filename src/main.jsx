@@ -12,7 +12,10 @@ if (typeof Object.hasOwn !== 'function') {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <CopilotKit publicApiKey={copilotConfig.publicApiKey}>
+    {/* showDevConsole: nút tròn dev-console của CopilotKit neo ở góc trái dưới
+        màn hình, che đúng tab đầu tiên của thanh tab mobile nên không bấm
+        được. Nó cũng hiện trên mọi trang kể cả trang không dùng chat. */}
+    <CopilotKit publicApiKey={copilotConfig.publicApiKey} showDevConsole={false}>
       <App />
     </CopilotKit>
   </React.StrictMode>

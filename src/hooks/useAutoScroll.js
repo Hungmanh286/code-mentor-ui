@@ -1,61 +1,52 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 
-const SCROLL_THRESHOLD = 10;
+const NEAR_BOTTOM = 80;
 
-function useAutoScroll(active) {
-  const scrollContentRef = useRef(null);
-  const isDisabled = useRef(false);
-  const prevScrollTop = useRef(null);
+/**
+ * Giữ khung chat luôn ở đáy khi có nội dung mới — trừ khi người dùng đã tự
+ * cuộn lên để đọc lại, lúc đó không giật họ về nữa.
+ *
+ * Bản cũ thao tác trên document.documentElement trong khi phần cuộn thật là
+ * một div lồng bên trong, nên trên thực tế không bao giờ cuộn: đo được
+ * scrollTop = 0 với scrollHeight 2074px.
+ *
+ * @param {...any} deps Đổi giá trị nào thì kiểm tra lại vị trí cuộn.
+ * @returns ref để gắn vào chính phần tử có overflow-y: auto.
+ */
+function useAutoScroll(...deps) {
+  const containerRef = useRef(null);
+  const pinnedRef = useRef(true);
 
   useEffect(() => {
-    const resizeObserver = new ResizeObserver(() => {
-      const { scrollHeight, clientHeight, scrollTop } = document.documentElement;
-      if (!isDisabled.current && scrollHeight - clientHeight > scrollTop) {
-        document.documentElement.scrollTo({
-          top: scrollHeight - clientHeight,
-          behavior: 'smooth'
-        });
-      }
-    });
+    const el = containerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const distance = el.scrollHeight - el.clientHeight - el.scrollTop;
+      pinnedRef.current = distance <= NEAR_BOTTOM;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
 
-    if (scrollContentRef.current) {
-      resizeObserver.observe(scrollContentRef.current);
-    }
-    
-    return () => resizeObserver.disconnect();
+  // Nội dung stream về từng mẩu nên chiều cao đổi liên tục mà không phải lúc
+  // nào cũng đi kèm một lần render của React — theo dõi bằng ResizeObserver.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      if (pinnedRef.current) el.scrollTop = el.scrollHeight;
+    });
+    Array.from(el.children).forEach((child) => observer.observe(child));
+    return () => observer.disconnect();
   }, []);
 
   useLayoutEffect(() => {
-    if (!active) {
-      isDisabled.current = true;
-      return;
-    }
+    const el = containerRef.current;
+    if (el && pinnedRef.current) el.scrollTop = el.scrollHeight;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 
-    function onScroll() {
-      const { scrollHeight, clientHeight, scrollTop } = document.documentElement;
-      if (
-        !isDisabled.current &&
-        window.scrollY < prevScrollTop.current &&
-        scrollHeight - clientHeight > scrollTop + SCROLL_THRESHOLD
-      ) {
-        isDisabled.current = true;
-      } else if (
-        isDisabled.current &&
-        scrollHeight - clientHeight <= scrollTop + SCROLL_THRESHOLD
-      ) {
-        isDisabled.current = false;
-      }
-      prevScrollTop.current = window.scrollY;
-    }
-    
-    isDisabled.current = false;
-    prevScrollTop.current = document.documentElement.scrollTop;
-    window.addEventListener('scroll', onScroll);
-
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [active]);
-
-  return scrollContentRef;
+  return containerRef;
 }
 
 export default useAutoScroll;

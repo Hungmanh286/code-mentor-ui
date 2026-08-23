@@ -1,26 +1,75 @@
-#topi-title {
-    padding-top: 1.2rem;
+/* Kiểu chữ cho phần nội dung do bot trả về: markdown đã render và công thức
+   KaTeX. Tách riêng khỏi index.css vì đây là typography của nội dung, không
+   phải khung giao diện. */
+
+.markdown-container {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
 
-#topi-chat-input {
-    padding-bottom: 3rem;
+.markdown-container p {
+    @apply mb-4 leading-[1.65];
 }
 
-.next-question-header {
-    margin-bottom: 1rem;
+.markdown-container> :last-child {
+    @apply mb-0;
 }
 
-.question-link {
-    display: block;
-    padding: 5px;
-    text-decoration: none;
-    color: #007bff;
+.markdown-container h1,
+.markdown-container h2,
+.markdown-container h3 {
+    @apply font-urbanist font-semibold tracking-[-0.01em] mt-5 mb-2;
 }
 
-.question-link:hover {
-    text-decoration: underline;
+.markdown-container h1 { @apply text-[19px]; }
+.markdown-container h2 { @apply text-[17px]; }
+.markdown-container h3 { @apply text-[15px]; }
+
+.markdown-container ul,
+.markdown-container ol {
+    @apply mb-4 pl-5 space-y-1.5;
 }
 
+.markdown-container ul { @apply list-disc; }
+.markdown-container ol { @apply list-decimal; }
+
+.markdown-container li { @apply leading-[1.6]; }
+
+.markdown-container a {
+    @apply text-accent underline underline-offset-2 hover:text-accent-strong;
+}
+
+.markdown-container code {
+    @apply font-mono text-[0.9em] px-1 py-0.5 rounded bg-surface border border-hairline-soft;
+}
+
+.markdown-container pre {
+    @apply mb-4 p-3.5 rounded-lg bg-panel border border-hairline overflow-x-auto;
+}
+
+.markdown-container pre code {
+    @apply p-0 border-0 bg-transparent text-[12px] leading-[1.7];
+}
+
+.markdown-container blockquote {
+    @apply mb-4 pl-3.5 border-l-2 border-hairline text-main-text/70;
+}
+
+.markdown-container table {
+    @apply mb-4 w-full text-[13px] border-collapse;
+}
+
+.markdown-container th,
+.markdown-container td {
+    @apply border border-hairline-soft px-2.5 py-1.5 text-left;
+}
+
+.markdown-container th {
+    @apply bg-surface font-semibold;
+}
+
+/* KaTeX: công thức khối phải cuộn ngang được thay vì tràn ra ngoài cột */
 .katex-display>.katex {
     display: block;
     text-align: center;
@@ -32,22 +81,8 @@
 }
 
 .katex {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     line-height: 1.2;
     text-indent: 0;
     text-rendering: auto;
-}
-
-.markdown-container {
-    max-width: 100%;
-    overflow-wrap: break-word;
-    word-wrap: break-word;
-    white-space: normal;
-}
-
-.flex>div:nth-child(1) {
-    max-width: 100%;
-    overflow: hidden;
-    word-wrap: break-word;
-    white-space: normal;
 }

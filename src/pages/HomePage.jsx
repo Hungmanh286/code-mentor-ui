@@ -1,204 +1,259 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import AppHeader from '../components/AppHeader';
+import { apiFetch } from '../api';
+
+function randomSessionId() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+function SessionCard({ id, fileCount, onDelete, deleting }) {
+    return (
+        <div className="group relative min-h-[168px] p-[18px] rounded-xl border border-hairline-soft bg-panel
+                        flex flex-col gap-3 transition-shadow hover:border-hairline hover:shadow-[0_2px_10px_rgba(0,43,49,0.06)]">
+            {/* Link phủ toàn thẻ, nhưng vẫn là thẻ <a> thật nên Ctrl+click / mở tab mới hoạt động */}
+            <Link to={`/session/${id}`} className="absolute inset-0 rounded-xl" aria-label={`Mở phiên ${id}`} />
+
+            <div className="flex items-start gap-2.5">
+                <div className="flex-1 min-w-0">
+                    <div className="font-urbanist text-[16.5px] font-semibold leading-tight tracking-[-0.01em]">
+                        Phiên {id.substring(0, 8)}
+                    </div>
+                    <div className="mt-1.5 font-mono text-[11px] text-muted-soft truncate">{id}</div>
+                </div>
+                <span className="shrink-0 py-[3px] px-2.5 rounded-full text-[10.5px] font-semibold bg-accent-tint text-accent">
+                    Đang mở
+                </span>
+            </div>
+
+            <div className="flex-1 flex items-end">
+                <p className="text-[12.5px] leading-relaxed text-main-text/60">
+                    {fileCount === null
+                        ? 'Đang đếm tài liệu…'
+                        : fileCount === 0
+                            ? 'Chưa có tài liệu nào — mở phiên để tải lên.'
+                            : `${fileCount} tài liệu đã tải lên.`}
+                </p>
+            </div>
+
+            <div className="relative flex items-center gap-2">
+                <span className="flex-1" />
+                <button
+                    type="button"
+                    onClick={onDelete}
+                    disabled={deleting}
+                    className="relative z-10 h-8 px-3 rounded-lg text-[12px] font-semibold text-main-text/50
+                               hover:text-error-red hover:bg-error-red/5 disabled:opacity-50 transition-colors
+                               lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100"
+                >
+                    {deleting ? 'Đang xoá…' : 'Xoá phiên'}
+                </button>
+            </div>
+        </div>
+    );
+}
 
 function HomePage() {
     const [sessions, setSessions] = useState([]);
+    const [fileCounts, setFileCounts] = useState({});
     const [isLoading, setIsLoading] = useState(true);
+    const [creating, setCreating] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
     const [error, setError] = useState(null);
+    const [query, setQuery] = useState('');
     const navigate = useNavigate();
 
-    useEffect(() => {
-        fetchSessions();
+    const fetchSessions = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await apiFetch('/sessions');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            const list = Array.isArray(data) ? data : (data.sessions || []);
+            setSessions(list);
+            return list;
+        } catch (err) {
+            // Trước đây khối catch này rỗng: backend chết thì trang hiện
+            // "chưa có phiên nào", người dùng tưởng mất sạch dữ liệu.
+            console.error('Không tải được danh sách phiên:', err);
+            setError('Không kết nối được máy chủ. Danh sách phiên chưa tải được — thử lại sau ít phút.');
+            setSessions([]);
+            return [];
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
 
-    const fetchSessions = async () => {
-        try {
-            setIsLoading(true);
-            const response = await fetch('http://0.0.0.0:8686/sessions');
+    useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+    // Số tài liệu là dữ liệu thật, lấy sau khi có danh sách phiên. Hỏng thì bỏ
+    // qua lặng lẽ vì đây chỉ là thông tin phụ trên thẻ.
+    useEffect(() => {
+        let cancelled = false;
+        if (!sessions.length) return;
+        setFileCounts((prev) => {
+            const next = { ...prev };
+            sessions.forEach((id) => { if (!(id in next)) next[id] = null; });
+            return next;
+        });
+        (async () => {
+            for (const id of sessions) {
+                try {
+                    const res = await apiFetch(`/session-files/${encodeURIComponent(id)}`);
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const n = Array.isArray(data) ? data.length : (data.files?.length ?? 0);
+                    if (!cancelled) setFileCounts((prev) => ({ ...prev, [id]: n }));
+                } catch { /* thông tin phụ, bỏ qua */ }
             }
-
-            const data = await response.json();
-            setSessions(data.sessions || []);
-        } catch (err) {
-
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        })();
+        return () => { cancelled = true; };
+    }, [sessions]);
 
     const createNewSession = async () => {
+        setCreating(true);
+        setError(null);
         try {
-            setIsLoading(true);
-            // Generate a random UUID for the new session
-            const randomSessionId = Math.random().toString(36).substring(2, 15) +
-                Math.random().toString(36).substring(2, 15);
-
-            // Create FormData for the request
+            const sessionId = randomSessionId();
             const formData = new FormData();
-            formData.append('session_id', randomSessionId);
-
-            // Call the create-session endpoint
-            const response = await fetch('http://0.0.0.0:8686/create-session', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-            console.log("Session created:", data);
-
-            // Navigate to the new session page with the generated ID
-            navigate(`/session/${randomSessionId}`);
+            formData.append('session_id', sessionId);
+            const response = await apiFetch('/create-session', { method: 'POST', body: formData });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await response.json();
+            navigate(`/session/${sessionId}`);
         } catch (err) {
-            console.error("Failed to create session:", err);
-            setError("Failed to create new session. Please try again.");
+            console.error('Tạo phiên thất bại:', err);
+            setError('Không tạo được phiên mới. Kiểm tra kết nối tới máy chủ rồi thử lại.');
         } finally {
-            setIsLoading(false);
+            setCreating(false);
         }
     };
 
-    const deleteSession = async (sessionId, e) => {
-        e.preventDefault(); // Ngăn navigation khi click delete
-        e.stopPropagation();
-
-        if (!confirm(`Are you sure you want to delete session ${sessionId.substring(0, 8)}...?`)) {
-            return;
-        }
-
+    const deleteSession = async (sessionId) => {
+        if (!window.confirm(`Xoá phiên ${sessionId.substring(0, 8)}? Toàn bộ tài liệu và hội thoại của phiên sẽ mất.`)) return;
+        setDeletingId(sessionId);
+        setError(null);
         try {
-            setIsLoading(true);
-            const response = await fetch(`http://0.0.0.0:8686/sessions/${sessionId}`, {
-                method: 'DELETE'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log("Session deleted:", data);
-
-            // Refresh sessions list
+            const response = await apiFetch(`/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             await fetchSessions();
-
         } catch (err) {
-            console.error("Failed to delete session:", err);
-            setError("Failed to delete session. Please try again.");
+            console.error('Xoá phiên thất bại:', err);
+            setError('Không xoá được phiên. Thử lại sau.');
         } finally {
-            setIsLoading(false);
+            setDeletingId(null);
         }
     };
+
+    const shown = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        return q ? sessions.filter((id) => id.toLowerCase().includes(q)) : sessions;
+    }, [sessions, query]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="w-full bg-white shadow-sm py-4">
-                <div className="container mx-auto px-4 flex items-center justify-between">
-                    <div className="flex items-center">
-                        <img src="/logo-code.png" className="h-8" alt="logo" />
-                        <h1 className="ml-3 text-xl font-bold text-gray-800">Learning Platform</h1>
-                    </div>
-                </div>
-            </header>
+        <div className="flex flex-col min-h-screen bg-surface text-main-text">
+            <AppHeader>
+                <label className="flex items-center gap-2.5 h-[34px] px-3 rounded-lg border border-hairline
+                                  bg-surface w-full max-w-[260px] focus-within:border-accent transition-colors">
+                    <svg className="w-[15px] h-[15px] shrink-0 text-muted-soft" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" />
+                    </svg>
+                    <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Tìm phiên học…"
+                        className="w-full bg-transparent text-[12.5px] placeholder:text-muted-soft focus:outline-none"
+                    />
+                </label>
+            </AppHeader>
 
-            {/* Main Content */}
-            <main className="container mx-auto px-4 py-8 flex-1">
-                <div className="max-w-5xl mx-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-semibold text-gray-800">Your Sessions</h2>
-                        <button
-                            onClick={createNewSession}
-                            className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                            disabled={isLoading}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                            </svg>
-                            Create New Session
+            <main className="flex-1 w-full max-w-[1120px] mx-auto px-4 sm:px-6 py-8 sm:py-11">
+                <div className="flex flex-wrap items-end gap-5 mb-7">
+                    <div className="flex-1 min-w-[260px]">
+                        <h1 className="font-urbanist text-[26px] sm:text-[30px] font-bold tracking-[-0.02em]">
+                            Phiên học của bạn
+                        </h1>
+                        <p className="mt-1.5 text-[13.5px] text-main-text/60">
+                            Mỗi phiên giữ riêng tài liệu, hội thoại và bài kiểm tra của một môn.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={createNewSession}
+                        disabled={creating}
+                        className="h-10 px-[18px] rounded-lg flex items-center gap-2 text-[13.5px] font-semibold
+                                   text-white bg-accent hover:bg-accent-strong disabled:opacity-60 transition-colors"
+                    >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                        {creating ? 'Đang tạo…' : 'Phiên mới'}
+                    </button>
+                </div>
+
+                {error && (
+                    <div role="alert" className="mb-5 flex items-start gap-3 px-4 py-3 rounded-lg border border-error-red/25 bg-error-red/5">
+                        <svg className="w-[18px] h-[18px] shrink-0 mt-px text-error-red" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" /><path d="M12 7.5v5M12 16h.01" />
+                        </svg>
+                        <p className="text-[13px] leading-relaxed text-error-red flex-1">{error}</p>
+                        <button type="button" onClick={fetchSessions}
+                            className="text-[12.5px] font-semibold text-error-red underline underline-offset-4 shrink-0">
+                            Thử lại
                         </button>
                     </div>
+                )}
 
-                    {error && (
-                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                            {error}
-                        </div>
-                    )}
-
-                    {isLoading ? (
-                        <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                        </div>
-                    ) : sessions.length === 0 ? (
-                        <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                            <p className="text-gray-600 mb-4">You don't have any sessions yet.</p>
-                            <button
-                                onClick={createNewSession}
-                                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                                Start Your First Session
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {/* New Session Card */}
-                            <div
-                                className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200 shadow-sm p-5 cursor-pointer hover:shadow-md transition-shadow flex flex-col items-center justify-center h-48"
-                                onClick={createNewSession}
-                            >
-                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-medium text-gray-800">Create New Session</h3>
-                                <p className="text-sm text-gray-600 text-center mt-2">Start a new learning session</p>
+                {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[0, 1, 2].map((i) => (
+                            <div key={i} className="min-h-[168px] rounded-xl border border-hairline-soft bg-panel p-[18px]">
+                                <div className="h-4 w-1/2 rounded bg-hairline-soft animate-pulse" />
+                                <div className="mt-3 h-3 w-2/3 rounded bg-hairline-soft/70 animate-pulse" />
                             </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <button
+                            type="button"
+                            onClick={createNewSession}
+                            disabled={creating}
+                            className="min-h-[168px] p-[18px] rounded-xl border border-dashed border-hairline
+                                       flex flex-col items-center justify-center gap-2.5 text-center
+                                       hover:border-accent/40 hover:bg-panel/60 disabled:opacity-60 transition-colors"
+                        >
+                            <span className="w-10 h-10 rounded-[11px] bg-accent-tint flex items-center justify-center">
+                                <svg className="w-[19px] h-[19px] text-accent" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true">
+                                    <path d="M12 5v14M5 12h14" />
+                                </svg>
+                            </span>
+                            <span className="text-[13.5px] font-semibold">Bắt đầu phiên mới</span>
+                            <span className="text-[12px] leading-relaxed text-muted">Tải tài liệu lên và hỏi<br />ngay từ nội dung đó</span>
+                        </button>
 
-                            {/* Existing Session Cards */}
-                            {sessions.map((session, index) => (
-                                <Link
-                                    key={index}
-                                    to={`/session/${session}`}
-                                    className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
-                                    onClick={(e) => {
-                                        // Ensure the session ID is properly passed in the URL
-                                        e.preventDefault();
-                                        navigate(`/session/${session}`);
-                                    }}
-                                >
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="text-lg font-medium text-gray-800">Session {session.substring(0, 8)}...</h3>
-                                            <p className="text-sm text-gray-500 mt-1">Continue your learning</p>
-                                        </div>
-                                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Active</span>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm text-gray-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Last active: Recently
-                                    </div>
-                                    <button
-                                        onClick={(e) => deleteSession(session, e)}
-                                        className="mt-2 px-2 py-1 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
-                                    >
-                                        Delete
-                                    </button>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                        {shown.map((id) => (
+                            <SessionCard
+                                key={id}
+                                id={id}
+                                fileCount={fileCounts[id] ?? null}
+                                deleting={deletingId === id}
+                                onDelete={() => deleteSession(id)}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {!isLoading && !error && sessions.length > 0 && shown.length === 0 && (
+                    <p className="mt-6 text-[13px] text-muted">Không có phiên nào khớp “{query}”.</p>
+                )}
             </main>
 
-            {/* Footer */}
-            <footer className="w-full bg-white border-t border-gray-200 py-4 mt-auto">
-                <div className="container mx-auto px-4">
-                    <p className="text-center text-gray-500 text-sm">© 2023 Learning Platform. All rights reserved.</p>
-                </div>
+            <footer className="w-full border-t border-hairline-soft py-4 mt-auto">
+                <p className="text-center text-muted-soft text-xs">Mentor Code · Nền tảng học lập trình</p>
             </footer>
         </div>
     );

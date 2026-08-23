@@ -1,372 +1,289 @@
-import React, { useState, useEffect } from "react";
-import "../assets/css/StudioDashboard.css";
+import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../api';
 
-const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
-    const [collapsed, setCollapsed] = useState(false);
-    const [loadingQuiz, setLoadingQuiz] = useState(false);
+const TOOLS = [
+    {
+        id: 'mindmap',
+        title: 'Bản đồ tư duy',
+        icon: (
+            <>
+                <circle cx="12" cy="12" r="2.6" /><circle cx="5" cy="6" r="2.2" /><circle cx="19" cy="6" r="2.2" />
+                <circle cx="5" cy="18" r="2.2" /><circle cx="19" cy="18" r="2.2" />
+                <path d="M10 10.6 6.6 7.6M14 10.6l3.4-3M10 13.4l-3.4 3M14 13.4l3.4 3" />
+            </>
+        ),
+    },
+    {
+        id: 'flashcard',
+        title: 'Thẻ ghi nhớ',
+        icon: (<><rect x="4" y="4" width="16" height="16" rx="2.5" /><path d="M8.5 9.5h7M8.5 13h4.5" /></>),
+    },
+    {
+        id: 'quiz',
+        title: 'Bài kiểm tra',
+        icon: (<><path d="M9 11.5 11 13.5 15.5 9" /><rect x="4" y="4" width="16" height="16" rx="2.5" /></>),
+    },
+];
+
+function ToolCard({ tool, subtitle, active, disabled, busy, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled || busy}
+            className={`w-full min-h-[60px] flex items-center gap-3 py-3 px-3.5 rounded-[10px] border text-left transition-colors
+                        ${active ? 'border-accent bg-accent-tint' : 'border-hairline-soft hover:border-hairline hover:bg-surface'}
+                        ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+            <svg className="w-[18px] h-[18px] shrink-0 text-accent" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {tool.icon}
+            </svg>
+            <span className="flex-1 min-w-0">
+                <span className="block text-[13px] font-semibold">{tool.title}</span>
+                <span className="block text-[11px] text-muted mt-0.5">{busy ? 'Đang tạo…' : subtitle}</span>
+            </span>
+            {tool.id === 'quiz' && !busy && !disabled && (
+                <svg className="w-[15px] h-[15px] shrink-0 text-accent" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m9 5 7 7-7 7" />
+                </svg>
+            )}
+            {busy && <span className="w-3.5 h-3.5 shrink-0 rounded-full border-2 border-primary-orange border-t-transparent animate-spin" />}
+        </button>
+    );
+}
+
+const StudioDashboard = ({ sessionUUID }) => {
     const [projects, setProjects] = useState([]);
+    const [loadingQuiz, setLoadingQuiz] = useState(false);
+    const [error, setError] = useState(null);
+
     const [selectedProject, setSelectedProject] = useState(null);
     const [questions, setQuestions] = useState([]);
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [loadingQuestions, setLoadingQuestions] = useState(false);
-    const [userAnswers, setUserAnswers] = useState({});
-    const [showingResults, setShowingResults] = useState({});
+    const [currentIndex, setCurrentIndex] = useState(0);
 
-    // Thông báo lên App khi trạng thái thu gọn thay đổi
-    useEffect(() => {
-        if (onCollapsedChange) {
-            onCollapsedChange(collapsed);
-        }
-    }, [collapsed, onCollapsedChange]);
+    // Đáp án đã chọn, khoá theo chỉ số câu. Bản cũ xoá sạch state này mỗi lần
+    // đổi câu nên bấm "Câu tiếp" rồi "Câu trước" là mất hết kết quả đã làm.
+    const [answers, setAnswers] = useState({});
 
-    useEffect(() => {
-        if (!sessionUUID) {
+    const fetchProjects = useCallback(async () => {
+        if (!sessionUUID) { setProjects([]); return; }
+        try {
+            const res = await apiFetch(`/session-projects/${encodeURIComponent(sessionUUID)}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            setProjects(data.projects || []);
+        } catch (err) {
+            console.error('Không tải được danh sách project:', err);
             setProjects([]);
-            return;
         }
-        const fetchProjects = async () => {
-            try {
-                const projectsRes = await fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`);
-                const projectsData = await projectsRes.json();
-                setProjects(projectsData.projects || []);
-            } catch (e) {
-                setProjects([]);
-            }
-        };
-        fetchProjects();
     }, [sessionUUID]);
+
+    useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
     const handleQuizClick = async () => {
         if (!sessionUUID) return;
         setLoadingQuiz(true);
+        setError(null);
         try {
-            const response = await fetch('http://0.0.0.0:8686/process', {
-                method: 'POST',
-                headers: {},
-                body: (() => {
-                    const form = new FormData();
-                    form.append('session_id', sessionUUID);
-                    return form;
-                })(),
-            });
-            await response.json();
-            // Lấy danh sách project sau khi xử lý xong
-            const projectsRes = await fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`);
-            const projectsData = await projectsRes.json();
-            setProjects(projectsData.projects || []);
-        } catch (e) {
-            // Xử lý lỗi nếu cần
+            const form = new FormData();
+            form.append('session_id', sessionUUID);
+            const res = await apiFetch('/process', { method: 'POST', body: form });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await res.json();
+            await fetchProjects();
+        } catch (err) {
+            // Bản cũ nuốt lỗi ở đây: spinner chạy rồi tắt, không project nào
+            // sinh ra và người dùng không biết vì sao.
+            console.error('Tạo bài kiểm tra thất bại:', err);
+            setError('Không tạo được bài kiểm tra. Máy chủ chưa trả lời được yêu cầu này.');
         } finally {
             setLoadingQuiz(false);
         }
     };
 
-    const handleProjectClick = async (projectId) => {
+    const openProject = async (projectId) => {
         setLoadingQuestions(true);
         setSelectedProject(projectId);
+        setCurrentIndex(0);
+        setAnswers({});
+        setError(null);
         try {
-            const response = await fetch(`http://0.0.0.0:8686/project-questions/${projectId}`);
-            const data = await response.json();
+            const res = await apiFetch(`/project-questions/${encodeURIComponent(projectId)}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
             setQuestions(data.questions || []);
-            setCurrentQuestionIndex(0);
-        } catch (error) {
-            console.error("Error fetching questions:", error);
+        } catch (err) {
+            console.error('Không tải được câu hỏi:', err);
             setQuestions([]);
+            setError('Không tải được câu hỏi của bài kiểm tra này.');
         } finally {
             setLoadingQuestions(false);
-        }
-    };
-
-    const handleNextQuestion = () => {
-        if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(currentQuestionIndex + 1);
-        }
-    };
-
-    const handlePrevQuestion = () => {
-        if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex(currentQuestionIndex - 1);
         }
     };
 
     const closeQuestions = () => {
         setSelectedProject(null);
         setQuestions([]);
+        setAnswers({});
+        setCurrentIndex(0);
     };
 
-    const handleOptionClick = (questionIndex, optionIndex) => {
-        // Chỉ cho phép chọn khi chưa hiển thị kết quả
-        if (!showingResults[questionIndex]) {
-            setUserAnswers(prev => ({
-                ...prev,
-                [questionIndex]: optionIndex
-            }));
-
-            setShowingResults(prev => ({
-                ...prev,
-                [questionIndex]: true
-            }));
-        }
+    const pickAnswer = (optionIndex) => {
+        if (answers[currentIndex] !== undefined) return; // đã trả lời thì không đổi
+        setAnswers((prev) => ({ ...prev, [currentIndex]: optionIndex }));
     };
 
-    useEffect(() => {
-        if (currentQuestionIndex !== null) {
-            setUserAnswers({});
-            setShowingResults({});
-        }
-    }, [currentQuestionIndex]);
+    if (!sessionUUID) {
+        return <p className="p-4 text-[13px] text-muted">Đang mở phiên…</p>;
+    }
 
-    const tools = [
-        { title: "Bản đồ tư duy", color: "mindmap", onClick: () => { } },
-        { title: "File câu hỏi", color: "flashcard", onClick: () => { } },
-        { title: "Bài kiểm tra", color: "quiz", onClick: handleQuizClick },
-    ];
-
-    const notes = [
-    ];
+    const current = questions[currentIndex];
+    const picked = answers[currentIndex];
+    const answered = picked !== undefined;
 
     return (
-        <div className={`studio-container ${collapsed ? 'collapsed' : ''}`}>
-            {/* Header */}
-            <div className="studio-header">
-                <h3>Studio</h3>
-                <button
-                    className="collapse-btn"
-                    onClick={() => setCollapsed(!collapsed)}
-                    title={collapsed ? "Mở rộng" : "Thu gọn"}
-                >
-                    {collapsed ? "→" : "←"}
-                </button>
-            </div>
-
-            {!collapsed && (
+        <div className="p-3.5 flex flex-col gap-4">
+            {selectedProject === null ? (
                 <>
-                    <div className="session-info" style={{ fontSize: "0.8rem", margin: "8px 0", padding: "4px", backgroundColor: "#f0f5ff", borderRadius: "4px" }}>
-                        Session ID: <strong>{sessionUUID || "default-session"}</strong>
-                        {!sessionUUID && (
-                            <span style={{ color: "orange", marginLeft: "4px", fontSize: "0.7rem" }}>
-                                (Chờ session)
-                            </span>
-                        )}
+                    <div className="flex flex-col gap-2">
+                        <ToolCard tool={TOOLS[0]} subtitle="Sắp có" disabled onClick={() => { }} />
+                        <ToolCard tool={TOOLS[1]} subtitle="Sắp có" disabled onClick={() => { }} />
+                        <ToolCard
+                            tool={TOOLS[2]}
+                            subtitle={projects.length ? 'Tạo bài mới từ tài liệu đang bật' : 'Tạo từ tài liệu đang bật'}
+                            active
+                            busy={loadingQuiz}
+                            onClick={handleQuizClick}
+                        />
                     </div>
 
-                    <div className="studio-grid">
-                        {tools.map((item, index) => (
-                            <div
-                                key={index}
-                                className={`studio-card ${item.color} ${item.color === 'quiz' && !sessionUUID ? 'disabled' : ''}`}
-                                onClick={item.color === 'quiz' ? (sessionUUID ? item.onClick : null) : item.onClick}
-                                style={item.color === 'quiz' && !sessionUUID ? { opacity: 0.6, cursor: 'not-allowed' } : { cursor: 'pointer' }}
-                            >
-                                <span>{item.title}</span>
-                                <button className="edit-btn">✏️</button>
-                                {item.color === 'quiz' && !sessionUUID && (
-                                    <div style={{ fontSize: '0.6rem', color: '#ff6b6b', marginTop: '2px' }}>
-                                        Chờ session
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    {loadingQuiz && (
-                        <div style={{ margin: '16px 0', textAlign: 'center', color: '#1890ff', fontWeight: 500 }}>
-                            Đang xử lý bài kiểm tra...
-                        </div>
+                    {error && (
+                        <p role="alert" className="py-2.5 px-3 rounded-lg border border-error-red/25 bg-error-red/5 text-[12.5px] leading-relaxed text-error-red">
+                            {error}
+                        </p>
                     )}
 
-                    <div className="studio-list">
-                        {projects.length > 0 ? (
-                            projects.map((p, i) => (
-                                <div key={i} className="note-item" onClick={() => handleProjectClick(p.id)} style={{ cursor: 'pointer' }}>
-                                    <div className="note-left">
-                                        <div className="note-icon" style={{ cursor: 'pointer' }}>📁</div>
-                                        <div className="note-text">
-                                            <p className="note-title">{p.name}</p>
-                                            <p className="note-info">ID: {p.id}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
+                    <div className="pt-3.5 border-t border-hairline-soft flex flex-col gap-2.5">
+                        <span className="label-caps">Đã tạo</span>
+                        {projects.length === 0 ? (
+                            <p className="text-[12.5px] leading-relaxed text-muted">
+                                Chưa có bài nào. Bấm “Bài kiểm tra” ở trên để tạo từ tài liệu đang bật.
+                            </p>
                         ) : (
-                            <div style={{ color: '#888', textAlign: 'center', fontSize: '0.9rem' }}>Chưa có project nào</div>
-                        )}
-                    </div>
-
-                    {selectedProject && (
-                        <div className="questions-container" style={{
-                            margin: '20px 0',
-                            padding: '15px',
-                            backgroundColor: '#f9f9f9',
-                            borderRadius: '8px',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h4 style={{ margin: '0 0 15px 0' }}>Bài kiểm tra</h4>
+                            projects.map((project) => (
                                 <button
-                                    onClick={closeQuestions}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        fontSize: '18px',
-                                        cursor: 'pointer'
-                                    }}
+                                    key={project.id}
+                                    type="button"
+                                    onClick={() => openProject(project.id)}
+                                    className="w-full flex items-center gap-3 p-2.5 rounded-lg text-left hover:bg-surface transition-colors"
                                 >
-                                    ×
+                                    <svg className="w-4 h-4 shrink-0 text-muted" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17z" />
+                                    </svg>
+                                    <span className="flex-1 min-w-0">
+                                        <span className="block text-[13px] truncate">{project.name}</span>
+                                        <span className="block text-[10.5px] text-muted-soft mt-0.5 truncate">ID: {project.id}</span>
+                                    </span>
                                 </button>
-                            </div>
-
-                            {loadingQuestions ? (
-                                <div style={{ textAlign: 'center', padding: '20px' }}>
-                                    Đang tải câu hỏi...
-                                </div>
-                            ) : (
-                                <>
-                                    {questions.length > 0 ? (
-                                        <div>
-                                            <div style={{
-                                                position: 'relative',
-                                                padding: '15px',
-                                                backgroundColor: 'white',
-                                                borderRadius: '8px',
-                                                marginBottom: '15px',
-                                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                                            }}>
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    top: '10px',
-                                                    right: '10px',
-                                                    fontSize: '12px',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '12px',
-                                                    backgroundColor: questions[currentQuestionIndex].difficulty === 'easy' ? '#e6f7ff' :
-                                                        questions[currentQuestionIndex].difficulty === 'medium' ? '#fff7e6' : '#fff1f0',
-                                                    color: questions[currentQuestionIndex].difficulty === 'easy' ? '#1890ff' :
-                                                        questions[currentQuestionIndex].difficulty === 'medium' ? '#fa8c16' : '#f5222d'
-                                                }}>
-                                                    {questions[currentQuestionIndex].difficulty === 'easy' ? 'Dễ' :
-                                                        questions[currentQuestionIndex].difficulty === 'medium' ? 'Trung bình' : 'Khó'}
-                                                </div>
-
-                                                <p style={{
-                                                    fontSize: '16px',
-                                                    fontWeight: '500',
-                                                    marginTop: '5px'
-                                                }}>
-                                                    Câu {currentQuestionIndex + 1}/{questions.length}: {questions[currentQuestionIndex].question}
-                                                </p>
-
-                                                <div style={{ marginTop: '15px' }}>
-                                                    {questions[currentQuestionIndex].options.map((option, idx) => (
-                                                        <div key={idx} style={{
-                                                            padding: '10px 15px',
-                                                            margin: '8px 0',
-                                                            borderRadius: '4px',
-                                                            border: '1px solid #e8e8e8',
-                                                            cursor: 'pointer',
-                                                            backgroundColor: userAnswers[currentQuestionIndex] === idx ?
-                                                                (questions[currentQuestionIndex].correct_answer === idx ? '#f6ffed' : '#fff1f0') : 'white',
-                                                            borderColor: userAnswers[currentQuestionIndex] === idx ?
-                                                                (questions[currentQuestionIndex].correct_answer === idx ? '#b7eb8f' : '#ffa39e') : '#e8e8e8',
-                                                            transition: 'all 0.3s'
-                                                        }}
-                                                            onClick={() => handleOptionClick(currentQuestionIndex, idx)}>
-                                                            <span style={{
-                                                                display: 'inline-block',
-                                                                width: '24px',
-                                                                height: '24px',
-                                                                lineHeight: '24px',
-                                                                textAlign: 'center',
-                                                                borderRadius: '50%',
-                                                                marginRight: '10px',
-                                                                backgroundColor: userAnswers[currentQuestionIndex] === idx ?
-                                                                    (questions[currentQuestionIndex].correct_answer === idx ? '#52c41a' : '#f5222d') : '#f5f5f5',
-                                                                color: userAnswers[currentQuestionIndex] === idx ? 'white' : 'rgba(0,0,0,0.65)'
-                                                            }}>
-                                                                {String.fromCharCode(65 + idx)}
-                                                            </span>
-                                                            {option}
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                {showingResults[currentQuestionIndex] && (
-                                                    <div style={{
-                                                        marginTop: '15px',
-                                                        padding: '10px',
-                                                        backgroundColor: '#f6ffed',
-                                                        borderRadius: '4px',
-                                                        border: '1px solid #b7eb8f'
-                                                    }}>
-                                                        <strong>Giải thích:</strong> {questions[currentQuestionIndex].explanation}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px' }}>
-                                                <button
-                                                    onClick={handlePrevQuestion}
-                                                    disabled={currentQuestionIndex === 0}
-                                                    style={{
-                                                        padding: '8px 16px',
-                                                        borderRadius: '4px',
-                                                        border: '1px solid #d9d9d9',
-                                                        backgroundColor: currentQuestionIndex === 0 ? '#f5f5f5' : 'white',
-                                                        cursor: currentQuestionIndex === 0 ? 'not-allowed' : 'pointer',
-                                                        opacity: currentQuestionIndex === 0 ? 0.6 : 1
-                                                    }}
-                                                >
-                                                    ← Câu trước
-                                                </button>
-
-                                                <div style={{ fontSize: '14px', lineHeight: '32px' }}>
-                                                    {currentQuestionIndex + 1} / {questions.length}
-                                                </div>
-
-                                                <button
-                                                    onClick={handleNextQuestion}
-                                                    disabled={currentQuestionIndex === questions.length - 1}
-                                                    style={{
-                                                        padding: '8px 16px',
-                                                        borderRadius: '4px',
-                                                        border: '1px solid #d9d9d9',
-                                                        backgroundColor: currentQuestionIndex === questions.length - 1 ? '#f5f5f5' : 'white',
-                                                        cursor: currentQuestionIndex === questions.length - 1 ? 'not-allowed' : 'pointer',
-                                                        opacity: currentQuestionIndex === questions.length - 1 ? 0.6 : 1
-                                                    }}
-                                                >
-                                                    Câu tiếp →
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div style={{ textAlign: 'center', padding: '20px', color: '#888' }}>
-                                            Không có câu hỏi nào cho project này
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="studio-list">
-                        {notes.map((n, i) => (
-                            <div key={i} className="note-item">
-                                <div className="note-left">
-                                    <div className="note-icon">{n.icon}</div>
-                                    <div className="note-text">
-                                        <p className="note-title">{n.title}</p>
-                                        <p className="note-info">{n.info}</p>
-                                    </div>
-                                </div>
-                                <div className="note-actions">
-                                    {n.play && <button className="icon-btn">▶️</button>}
-                                    <button className="icon-btn">⋮</button>
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </>
+            ) : (
+                <div className="flex flex-col gap-3.5">
+                    <div className="flex items-center gap-2.5">
+                        <button type="button" onClick={closeQuestions} aria-label="Quay lại Studio"
+                            className="w-7 h-7 rounded-md flex items-center justify-center text-muted hover:text-main-text hover:bg-surface transition-colors">
+                            <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="m15 5-7 7 7 7" /></svg>
+                        </button>
+                        <span className="flex-1 text-[13.5px] font-semibold">Bài kiểm tra</span>
+                        {questions.length > 0 && (
+                            <span className="text-[11.5px] text-muted">Câu {currentIndex + 1}/{questions.length}</span>
+                        )}
+                    </div>
+
+                    {loadingQuestions ? (
+                        <p className="py-6 text-center text-[13px] text-muted">Đang tải câu hỏi…</p>
+                    ) : questions.length === 0 ? (
+                        <p className="py-6 text-center text-[13px] text-muted">Bài này chưa có câu hỏi nào.</p>
+                    ) : (
+                        <>
+                            <div className="h-[3px] rounded-sm bg-hairline-soft overflow-hidden">
+                                <div className="h-full rounded-sm bg-accent transition-all"
+                                    style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} />
+                            </div>
+
+                            <p className="text-[14px] font-semibold leading-snug">{current.question}</p>
+
+                            <div className="flex flex-col gap-2">
+                                {(current.options || []).map((option, i) => {
+                                    const isPick = picked === i;
+                                    const isRight = i === current.correct_answer;
+                                    let box = 'border-hairline-soft bg-panel hover:border-hairline';
+                                    let badge = 'bg-surface text-main-text/60';
+                                    if (answered && isRight) {
+                                        box = 'border-ok/50 bg-ok/5';
+                                        badge = 'bg-ok text-white';
+                                    } else if (isPick) {
+                                        box = 'border-error-red/45 bg-error-red/5';
+                                        badge = 'bg-error-red text-white';
+                                    }
+                                    return (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => pickAnswer(i)}
+                                            disabled={answered}
+                                            className={`w-full flex items-start gap-2.5 py-2.5 px-3 rounded-[9px] border text-left transition-colors ${box}
+                                                        ${answered ? 'cursor-default' : ''}`}
+                                        >
+                                            <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[11px] font-semibold ${badge}`}>
+                                                {String.fromCharCode(65 + i)}
+                                            </span>
+                                            <span className="text-[12.5px] leading-relaxed">{option}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {answered && (
+                                <div className="py-2.5 px-3 rounded-[9px] border border-ok/25 bg-ok/5">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ok">
+                                        {picked === current.correct_answer ? 'Chính xác' : 'Chưa đúng'}
+                                    </div>
+                                    <p className="mt-1.5 text-[12.5px] leading-relaxed text-main-text/75">{current.explanation}</p>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                                    disabled={currentIndex === 0}
+                                    className="h-8 px-3.5 rounded-lg border border-hairline bg-panel text-[12.5px]
+                                               hover:bg-surface disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Câu trước
+                                </button>
+                                <span className="flex-1" />
+                                <button
+                                    type="button"
+                                    onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                                    disabled={currentIndex === questions.length - 1}
+                                    className="h-8 px-3.5 rounded-lg text-[12.5px] font-semibold text-white bg-accent
+                                               hover:bg-accent-strong disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Câu tiếp
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
             )}
         </div>
     );
