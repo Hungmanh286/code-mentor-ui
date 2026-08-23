@@ -60,21 +60,27 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
                 let prevChecked = {};
                 sources.forEach(s => { prevChecked[s.id] = s.checked; });
 
-                if (Array.isArray(data)) {
-                    const filesData = data.map(fileId => ({
-                        name: `File ${fileId.substring(0, 8)}...`,
-                        id: fileId,
-                        checked: typeof prevChecked[fileId] !== 'undefined' ? prevChecked[fileId] : false
-                    }));
-                    setSources(filesData);
-                }
-                else if (data.files && Array.isArray(data.files)) {
-                    const filesData = data.files.map(file => ({
-                        name: file.filename || `File ${file.file_id.substring(0, 8)}`,
-                        id: file.file_id,
-                        checked: typeof prevChecked[file.file_id] !== 'undefined' ? prevChecked[file.file_id] : (file.active || false)
-                    }));
-                    setSources(filesData);
+                // Backend tra ve mang object [{ file_id, file_name }], nhung cung chap nhan
+                // mang chuoi file_id hoac dang { files: [...] } de khong vo khi API doi
+                const toSource = (item) => {
+                    const id = typeof item === 'string' ? item : (item?.file_id ?? item?.id);
+                    if (!id) return null;
+                    const name = typeof item === 'string'
+                        ? `File ${item.substring(0, 8)}...`
+                        : (item.file_name || item.filename || `File ${String(id).substring(0, 8)}...`);
+                    return {
+                        name,
+                        id,
+                        checked: typeof prevChecked[id] !== 'undefined' ? prevChecked[id] : (item?.active || false)
+                    };
+                };
+
+                const rawList = Array.isArray(data)
+                    ? data
+                    : (Array.isArray(data?.files) ? data.files : null);
+
+                if (rawList) {
+                    setSources(rawList.map(toSource).filter(Boolean));
                 }
                 else {
                     setSources([]);
