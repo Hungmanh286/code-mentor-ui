@@ -1,74 +1,61 @@
-# mentor Chatbot Frontend
+# Code Mentor UI
 
-This repository contains the frontend code for the mentor Chatbot application. It is built using React and powered by Vite for a fast development experience. The project uses Bun as the package manager and is compatible with Node.js 18.
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+![Bun](https://img.shields.io/badge/Bun-000000?logo=bun&logoColor=white)
+![CopilotKit](https://img.shields.io/badge/CopilotKit-6C47FF)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![Ansible](https://img.shields.io/badge/Ansible-EE0000?logo=ansible&logoColor=white)
 
-## Prerequisites
+Web client for **[AI Code Mentor](https://github.com/Hungmanh286/AI-CODE-MENTOR)**, an AI tutor that learns from your study documents. Upload a PDF, chat with it in real time, and generate quizzes, flashcards, and mind maps.
 
-Before setting up the project, ensure you have the following installed on your system:
+## Features
 
-- **Node.js**: Version 18.x
-- **Bun**: Latest version ([Installation guide](https://bun.sh/))
+- **Real-time chat** over WebSocket with streamed Markdown answers, including math (KaTeX) and GitHub-flavoured Markdown
+- **Source panel:** upload documents, poll their processing status, and crop images to ask about a specific region
+- **Studio dashboard:** one-click quiz, flashcard, and mind-map generation from the active document
+- **Sessions:** create, reopen, and delete study sessions
+- **Production deploy:** multi-stage Docker image (Bun build → Nginx) and Ansible playbooks with Vault-encrypted secrets
 
-## Getting Started
+## Tech stack
 
-Follow these steps to set up and run the project locally:
+React 18 · React Router · Vite · Bun · CopilotKit · react-markdown (remark-gfm, remark-math, rehype-katex) · use-immer · Docker · Nginx · Ansible
 
-### 1. Clone the repository
+## Project structure
 
-```bash
-git clone https://gitlab.ovp.vn/llm/mentor-bot.git -b langchain-ui
-cd mentor-bot
+```
+src/
+  components/   Chatbot, ChatMessages, ChatInput, SourcePanel, StudioDashboard…
+  pages/        HomePage (session list), SessionPage (chat + sources + studio)
+  hooks/        useAutoScroll, useAutosize
+  api.js        REST client for the backend
+  websocket.js  WebSocket chat client
+ansible/        Server provisioning and deployment playbooks
 ```
 
-### 2. Install dependencies
+## Getting started
 
-Use Bun to install the project dependencies:
+Requirements: [Bun](https://bun.sh/) and Node.js 18+.
 
 ```bash
 bun install
+cp .env.sample .env      # VITE_CHAT_URL points to the AI Code Mentor backend
+bun run dev              # http://localhost:3001
 ```
 
-### 3. Start the development server
-
-Run the following command to start the Vite development server:
-
-```bash
-bun run dev
-```
-
-The application will be accessible at [http://localhost:4000](http://localhost:4000) by default.
-
-### 4. Build for production
-
-To create a production-ready build, run:
+Build and preview:
 
 ```bash
 bun run build
-```
-
-The output files will be generated in the `dist` directory.
-
-### 5. Preview the production build
-
-You can preview the production build locally using:
-
-```bash
 bun run preview
 ```
 
-## Key Features
+### Docker
 
-- **React**: Modern UI development
-- **Vite**: Fast build tool optimized for frontend projects
-- **Bun**: Blazing-fast JavaScript runtime and package manager
-- **Node.js 18**: Ensures compatibility with the latest features and security updates
+```bash
+docker compose up --build   # http://localhost:4000
+```
 
 ## License
 
-This project is licensed under the [MIT License](./LICENSE).
-
-## Acknowledgments
-
-- [Vite](https://vitejs.dev/)
-- [Bun](https://bun.sh/)
-- [React](https://reactjs.org/)
+Released under the [MIT License](LICENSE).
