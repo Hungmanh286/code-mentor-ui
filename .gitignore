@@ -26,3 +26,22 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python (backend-reference)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Design-sync tooling: local caches/exports (regenerate with the design-sync tool)
+.design/
+.design-sync/
+.ds-sync/
+ds-bundle/
+
+# Agent skills installed locally — reinstall from skills-lock.json (committed)
+.agents/
+.claude/skills/
+
+# E2E screenshots — regenerate with docs/agui/e2e/e2e.mjs
+docs/agui/e2e/shots/
