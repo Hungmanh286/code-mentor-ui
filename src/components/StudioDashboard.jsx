@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../assets/css/StudioDashboard.css";
+import { API_URL, USE_AGUI } from "@/config";
+import StudioAgentArtifacts from "@/agent/state/StudioAgentArtifacts";
 
 const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
     const [collapsed, setCollapsed] = useState(false);
@@ -34,7 +36,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
         if (!sessionUUID) return;
 
         console.log(`[SSE] Connecting to SSE for session: ${sessionUUID}`);
-        const sse = new EventSource(`http://0.0.0.0:8686/sse/notify?session_id=${sessionUUID}`);
+        const sse = new EventSource(`${API_URL}/sse/notify?session_id=${sessionUUID}`);
 
         sse.onopen = function () {
             console.log(`[SSE] Connected successfully for session: ${sessionUUID}`);
@@ -61,7 +63,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
                 // Lấy mindmap_id từ event hoặc từ danh sách mindmap
                 // Đầu tiên gọi API list để lấy mindmap mới nhất
-                fetch(`http://0.0.0.0:8686/mindmap/list/${sessionUUID}`)
+                fetch(`${API_URL}/mindmap/list/${sessionUUID}`)
                     .then(res => res.json())
                     .then(async (mindmapList) => {
                         console.log("[SSE] Mindmap list received:", mindmapList);
@@ -72,7 +74,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                             console.log(`[SSE] Auto-loading latest mindmap: ${mindmapId}`);
 
                             // Gọi API lấy mindmap với ID
-                            const response = await fetch(`http://0.0.0.0:8686/mindmap/mindmap/${mindmapId}?session_id=${sessionUUID}`);
+                            const response = await fetch(`${API_URL}/mindmap/mindmap/${mindmapId}?session_id=${sessionUUID}`);
                             const data = await response.json();
 
                             if (data.error) {
@@ -94,7 +96,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
             // Xử lý event "done" (sinh câu hỏi xong)
             else if (event.data === "question_done" || eventData.type === "document_done" || eventData.type === "question_done") {
                 console.log(`[SSE] ✨ 'done' event matched! Fetching projects for session: ${sessionUUID}`);
-                fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`)
+                fetch(`${API_URL}/session-projects/${sessionUUID}`)
                     .then(res => {
                         console.log(`[SSE]  Fetch response status:`, res.status);
                         return res.json();
@@ -114,7 +116,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                             setLoadingQuestions(true);
                             setSelectedProject(projectId);
                             try {
-                                const response = await fetch(`http://0.0.0.0:8686/project-questions/${projectId}`);
+                                const response = await fetch(`${API_URL}/project-questions/${projectId}`);
                                 const qData = await response.json();
                                 console.log(`[SSE] Questions loaded for project ${projectId}:`, qData.questions?.length || 0);
                                 setQuestions(qData.questions || []);
@@ -155,7 +157,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
         // Fetch danh sách project và hiển thị modal
         setLoadingQuiz(true);
         try {
-            const projectsRes = await fetch(`http://0.0.0.0:8686/session-projects/${sessionUUID}`);
+            const projectsRes = await fetch(`${API_URL}/session-projects/${sessionUUID}`);
             const projectsData = await projectsRes.json();
             const projectList = projectsData.projects || [];
 
@@ -179,7 +181,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
         setSelectedProject(projectId);
         setShowProjectList(false); // Đóng modal danh sách
         try {
-            const response = await fetch(`http://0.0.0.0:8686/project-questions/${projectId}`);
+            const response = await fetch(`${API_URL}/project-questions/${projectId}`);
             const data = await response.json();
             setQuestions(data.questions || []);
             setCurrentQuestionIndex(0);
@@ -238,7 +240,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
                 const formData = new FormData();
                 formData.append('answer', optionIndex);
 
-                await fetch(`http://0.0.0.0:8686/add_answer/${questionId}`, {
+                await fetch(`${API_URL}/add_answer/${questionId}`, {
                     method: 'POST',
                     body: formData
                 });
@@ -289,7 +291,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
         setLoadingMindmap(true);
         try {
-            const response = await fetch(`http://0.0.0.0:8686/mindmap/list/${sessionUUID}`);
+            const response = await fetch(`${API_URL}/mindmap/list/${sessionUUID}`);
             const data = await response.json();
 
             if (data.error) {
@@ -315,7 +317,7 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
         setSelectedMindmapId(mindmapId);
         setShowMindmapList(false); // Đóng modal danh sách
         try {
-            const response = await fetch(`http://0.0.0.0:8686/mindmap/mindmap/${mindmapId}?session_id=${sessionUUID}`);
+            const response = await fetch(`${API_URL}/mindmap/mindmap/${mindmapId}?session_id=${sessionUUID}`);
             const data = await response.json();
 
             if (data.error) {
@@ -367,6 +369,8 @@ const StudioDashboard = ({ onCollapsedChange, sessionUUID }) => {
 
             {!collapsed && (
                 <>
+                    {USE_AGUI && <StudioAgentArtifacts />}
+
                     <div className="session-info" style={{ fontSize: "0.8rem", margin: "8px 0", padding: "4px", backgroundColor: "#f0f5ff", borderRadius: "4px" }}>
                         Session ID: <strong>{sessionUUID || "default-session"}</strong>
                         {!sessionUUID && (
