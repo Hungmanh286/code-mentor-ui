@@ -1,0 +1,25 @@
+# Minimum versions for backend-reference/ (Python >= 3.11; verified with 3.12).
+# Verified together on 2026-11-18 in a throwaway venv (see README, "Đã xác minh"):
+#   ag-ui-langgraph 0.0.47, ag-ui-protocol 1.0.0, langgraph 1.2.22,
+#   langgraph-checkpoint-postgres 3.2.1, langchain-core 1.8.2, fastapi 0.163.2,
+#   pydantic 2.14.3, uvicorn 0.54.0, httpx 0.28.1, psycopg 3.3.9, psycopg-pool 3.3.3.
+# Lower bounds below are the versions actually verified (or what those require),
+# not the oldest versions that might work.
+#
+# server.py subclasses LangGraphAgent and overrides methods that are protected
+# or undocumented (_interrupts_to_agui, _build_command_from_agui_resume,
+# prepare_stream, get_state_snapshot, langgraph_default_merge_state).
+# After ANY upgrade of ag-ui-langgraph run `python selfcheck.py` again.
+
+ag-ui-langgraph[fastapi]>=0.0.47
+ag-ui-protocol>=1.0.0
+langgraph>=1.2.22
+langgraph-checkpoint-postgres>=3.2.1
+langchain-core>=1.4.7
+psycopg[binary]>=3.2.0   # langgraph-checkpoint-postgres floor; verified 3.3.9
+psycopg-pool>=3.2.0      # verified 3.3.3
+fastapi>=0.115.12   # ag-ui-langgraph[fastapi] floor; verified on 0.163.2
+pydantic>=2.11.2
+uvicorn>=0.54.0
+# selfcheck.py only (Starlette TestClient):
+httpx>=0.28.1
