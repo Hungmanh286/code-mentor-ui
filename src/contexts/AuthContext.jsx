@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_URL } from '@/config';
 
 const AuthContext = createContext(null);
 
@@ -26,7 +27,7 @@ export const AuthProvider = ({ children }) => {
       formData.append('user_name', username);
       formData.append('password', password);
 
-      const response = await fetch('http://0.0.0.0:8686/login', {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         body: formData
       });
@@ -60,7 +61,7 @@ export const AuthProvider = ({ children }) => {
       if (email) formData.append('email', email);
       if (fullName) formData.append('full_name', fullName);
 
-      const response = await fetch('http://0.0.0.0:8686/register', {
+      const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         body: formData
       });

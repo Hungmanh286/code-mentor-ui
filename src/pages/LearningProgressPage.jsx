@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '@/config';
 
 function LearningProgressPage() {
     const navigate = useNavigate();
@@ -19,7 +20,7 @@ function LearningProgressPage() {
     useEffect(() => {
         const fetchProjectScores = async () => {
             try {
-                const response = await fetch('http://0.0.0.0:8686/project-scores');
+                const response = await fetch(`${API_URL}/project-scores`);
                 const data = await response.json();
 
                 // Transform API data to match component format

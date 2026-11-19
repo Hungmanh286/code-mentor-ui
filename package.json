@@ -7,11 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mock:agent": "node mock-agent/server.mjs",
+    "smoke:agui": "node scripts/agui-smoke.mjs"
   },
   "dependencies": {
-    "@copilotkit/react-core": "^1.10.6",
-    "@copilotkit/react-ui": "^1.10.6",
+    "@ag-ui/client": "1.0.5",
+    "@assistant-ui/react": "0.15.36",
+    "@assistant-ui/react-ag-ui": "0.1.10",
     "@radix-ui/react-progress": "^1.1.7",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.7",

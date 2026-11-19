@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Flame, TrendingUp, Calendar, Target, Trophy, Star, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '@/config';
 
 function HomePage() {
     const [sessions, setSessions] = useState([]);
@@ -38,7 +39,7 @@ function HomePage() {
             }
 
             // Gọi API với user_id
-            const response = await fetch(`http://0.0.0.0:8686/user-sessions/${user.user_id}`);
+            const response = await fetch(`${API_URL}/user-sessions/${user.user_id}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
@@ -86,7 +87,7 @@ function HomePage() {
             formData.append('user_id', user.user_id); // Thêm user_id
 
             // Call the create-session endpoint
-            const response = await fetch('http://0.0.0.0:8686/create-session', {
+            const response = await fetch(`${API_URL}/create-session`, {
                 method: 'POST',
                 body: formData
             });
@@ -121,7 +122,7 @@ function HomePage() {
         try {
             setIsLoading(true);
             // Gửi user_id như query parameter để verify quyền sở hữu
-            const response = await fetch(`http://0.0.0.0:8686/sessions/${sessionId}?user_id=${user.user_id}`, {
+            const response = await fetch(`${API_URL}/sessions/${sessionId}?user_id=${user.user_id}`, {
                 method: 'DELETE'
             });
 

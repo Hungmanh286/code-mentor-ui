@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useNavigate, useParams } from 'react-router-dom';
+import { API_URL } from '@/config';
 
 function ProjectDetailPage() {
     const navigate = useNavigate();
@@ -23,15 +24,15 @@ function ProjectDetailPage() {
             setIsLoading(true);
 
             // Fetch questions detail for this project
-            const questionsResponse = await fetch(`http://0.0.0.0:8686/project-questions-detail/${projectId}`);
+            const questionsResponse = await fetch(`${API_URL}/project-questions-detail/${projectId}`);
             const questionsData = await questionsResponse.json();
 
             // Fetch full questions to get question text and options
-            const fullQuestionsResponse = await fetch(`http://0.0.0.0:8686/project-questions/${projectId}`);
+            const fullQuestionsResponse = await fetch(`${API_URL}/project-questions/${projectId}`);
             const fullQuestionsData = await fullQuestionsResponse.json();
 
             // Fetch project scores to get project info
-            const scoresResponse = await fetch('http://0.0.0.0:8686/project-scores');
+            const scoresResponse = await fetch(`${API_URL}/project-scores`);
             const scoresData = await scoresResponse.json();
             const project = scoresData.projects.find(p => p.project_id === projectId);
 

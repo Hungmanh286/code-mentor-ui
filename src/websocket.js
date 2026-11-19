@@ -86,7 +86,7 @@ export const useWebSocket = (sessionId = null) => {
                         case 'interrupt':
                             console.log('Interrupt event received:', data); // In ra terminal/console
                             window.dispatchEvent(
-                                new CustomEvent("copilotkit-interrupt", { detail: data })
+                                new CustomEvent("legacy-ws-interrupt", { detail: data })
                             );
                             break;
                         default:

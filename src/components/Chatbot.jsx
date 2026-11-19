@@ -4,8 +4,8 @@ import ChatMessages from '@/components/ChatMessages';
 import ChatInput from '@/components/ChatInput';
 import ChatSessionUUID from './ChatSessionUUID';
 import { useWebSocket } from '@/websocket';
-import { useLangGraphInterrupt } from "@copilotkit/react-core";
 import CustomScrollbar from './CustomScrollbar';
+import { API_URL } from '@/config';
 
 // Add console logs to debug component mounting
 const Chatbot = ({ onSessionUUID, sessionId }) => {
@@ -32,7 +32,7 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
 
       try {
         setIsLoadingHistory(true);
-        const response = await fetch(`http://0.0.0.0:8686/history-chat/${sessionId}`);
+        const response = await fetch(`${API_URL}/history-chat/${sessionId}`);
         const data = await response.json();
 
         if (data.history && data.history.length > 0) {
@@ -77,21 +77,6 @@ const Chatbot = ({ onSessionUUID, sessionId }) => {
       console.log("Session UUID đã được truyền lên:", sessionUUID);
     }
   }, [sessionUUID, onSessionUUID]);
-
-  useLangGraphInterrupt({
-    render: ({ event, resolve }) => (
-      <div className="p-4 bg-yellow-100 border border-yellow-400 rounded mb-4">
-        <p className="mb-2 text-yellow-800">{event.value}</p>
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          resolve(e.target.response.value);
-        }}>
-          <input type="text" name="response" placeholder="Enter your response" className="border rounded px-2 py-1 mr-2" />
-          <button type="submit" className="bg-blue-500 text-white px-3 py-1 rounded">Submit</button>
-        </form>
-      </div>
-    )
-  });
 
   useEffect(() => {
     const updateMessages = (updates) => {

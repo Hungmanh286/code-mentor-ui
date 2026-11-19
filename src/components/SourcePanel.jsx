@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { RefreshCw, Lightbulb, Trash2 } from 'lucide-react';
 import "../assets/css/SourcePanel.css";
 import CustomScrollbar from './CustomScrollbar';
+import { API_URL } from '@/config';
 
 const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
     const [collapsed, setCollapsed] = useState(false);
@@ -54,7 +55,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         setLoadingFiles(true);
         try {
             console.log(`Fetching files for session: ${sessionUUID}`);
-            const response = await fetch(`http://0.0.0.0:8686/session-files/${sessionUUID}`);
+            const response = await fetch(`${API_URL}/session-files/${sessionUUID}`);
             console.log("Response status:", response.status);
 
             if (response.ok) {
@@ -151,7 +152,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
 
         try {
             console.log("Uploading file with session:", sessionUUID, "file_id:", fileId);
-            const res = await fetch('http://0.0.0.0:8686/upload', {
+            const res = await fetch(`${API_URL}/upload`, {
                 method: 'POST',
                 body: formData,
             });
@@ -193,7 +194,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
 
         try {
             console.log(`Fetching content for file: ${filename}, session: ${sessionUUID}, fileId: ${fileId}`);
-            const res = await fetch(`http://0.0.0.0:8686/view-file?session_id=${sessionUUID}&file_id=${fileId}`);
+            const res = await fetch(`${API_URL}/view-file?session_id=${sessionUUID}&file_id=${fileId}`);
             console.log("Response status:", res.status);
             console.log("Content type:", res.headers.get('content-type'));
 
@@ -241,7 +242,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
             formData.append('active', active);
 
             console.log(`Updating file active status: fileId=${fileId}, active=${active}`);
-            const response = await fetch('http://0.0.0.0:8686/update-file-active', {
+            const response = await fetch(`${API_URL}/update-file-active`, {
                 method: 'PUT',
                 body: formData,
             });
@@ -264,7 +265,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
             formData.append("file_id", currentFileId);
 
             console.log(`Uploading cropped image for session: ${sessionId}, file_id: ${currentFileId}`);
-            const response = await fetch("http://0.0.0.0:8686/upload-crop", {
+            const response = await fetch(`${API_URL}/upload-crop`, {
                 method: "POST",
                 body: formData,
             });
@@ -461,7 +462,7 @@ const SourcePanel = ({ onCollapsedChange, sessionUUID }) => {
         if (!window.confirm(`Bạn có chắc muốn xóa file ${fileId.substring(0, 8)}...?`)) return;
         setLoadingFileStatus(prev => ({ ...prev, [fileId]: 'loading' }));
         try {
-            const response = await fetch(`http://0.0.0.0:8686/delete-file/${fileId}`, {
+            const response = await fetch(`${API_URL}/delete-file/${fileId}`, {
                 method: 'DELETE'
             });
             if (!response.ok) {
